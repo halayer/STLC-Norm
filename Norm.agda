@@ -2,18 +2,22 @@ module Norm where
 
   -- https://continuation.passing.style/blog/Strong_Normalization_of_STLC.html
 
-  open import Data.Product using (_×_; ∃-syntax; Σ-syntax)
+  open import Data.Product using (_×_; ∃-syntax; Σ-syntax; proj₁; proj₂)
     renaming (_,_ to _×,_)
   open import Data.Empty using () renaming (⊥ to Empty)
   open import Data.Unit using () renaming (⊤ to Unit)
   open import Data.Nat using (suc; zero) renaming (ℕ to Nat)
   open import Relation.Binary.PropositionalEquality
-    using (_≡_; refl; sym; cong)
+    using (_≡_; refl; sym; cong; trans)
   open import Relation.Nullary.Decidable using (Dec; yes; no)
 
-  open import Base hiding (unlam)
+  open import Base hiding (unlam; e0; eS)
+  open import Trans {Typ} using (e0; eS)
+  open Ren using (wkn)
   open Sub {_⊣_} using (_~>_; _,*_)
-  open Properties {_⊣_} {var} {rename} using (id*; ⟨_⟩; ~>↑; wkn*; wkn*'; ⊸-lift-prop)
+  open Properties {_⊣_} {var} {rename} using
+    (id*; ⟨_⟩; ~>↑; wkn*; wkn*'; ⊸-lift-prop; id*-id; id*-↑; _∙*_)
+  open Properties.MoreProperties {_⊣_} {var} {rename} {subst}
 
   private variable
     A B : Typ
@@ -36,19 +40,24 @@ module Norm where
     ℕ-β  : rec (nat zero) u v ↦c u
     ℕ-β' : rec {Γ = Γ} (nat (suc n)) u v ↦c subst v ((id* ,* (nat n)) ,* rec (nat n) u v)
 
-  det-↦cc : t ↦c u → t ↦c v → u ≡ v
-  det-↦cc (β _) (β _) = refl
-  det-↦cc if-⊤ if-⊤ = refl
-  det-↦cc if-⊥ if-⊥ = refl
-  det-↦cc ℕ-β ℕ-β = refl
-  det-↦cc ℕ-β' ℕ-β' = refl
-
   data _↦_ : A ⊣ Γ → A ⊣ Γ → Set where
     here : t ↦c t' → t ↦ t'
     ap : t ↦ t' → app t u ↦ app t' u
     ap' : u ↦ u' → app (abs t) u ↦ app (abs t) u'
     if : t ↦ t' → (if t then u else v) ↦ (if t' then u else v)
     rec : t ↦ t' → rec t u v ↦ rec t' u v
+
+
+  data _↦*_ : A ⊣ Γ → A ⊣ Γ → Set where
+    done : t ↦* t
+    step : t ↦ u → u ↦* v → t ↦* v
+
+  det-↦cc : t ↦c u → t ↦c v → u ≡ v
+  det-↦cc (β _) (β _) = refl
+  det-↦cc if-⊤ if-⊤ = refl
+  det-↦cc if-⊥ if-⊥ = refl
+  det-↦cc ℕ-β ℕ-β = refl
+  det-↦cc ℕ-β' ℕ-β' = refl
 
   is-val : (t : A ⊣ Γ) → Dec (Val t)
   is-val (var _) = no λ ()
@@ -145,9 +154,17 @@ module Norm where
   det-↦ (if s) (if s') = cong (λ t → if t then _ else _) (det-↦ s s')
   det-↦ (rec s) (rec s') = cong (λ t → rec t _ _) (det-↦ s s')
 
-  data _↦*_ : A ⊣ Γ → A ⊣ Γ → Set where
-    done : t ↦* t
-    step : t ↦ u → u ↦* v → t ↦* v
+  backstep : t ↦ t' → Val u → t ↦* u → t' ↦* u
+  backstep (here ()) true done
+  backstep (here ()) false done
+  backstep (here ()) nat done
+  backstep (here ()) abs done
+  backstep (ap s) () done
+  backstep (ap' s) () done
+  backstep (if s) () done
+  backstep (rec s) () done
+  backstep s _ (step s' j) with det-↦ s s'
+  ...                         | refl = j
 
   _⇓_ : A ⊣ Γ → A ⊣ Γ → Set
   _⇓_ t v = Val v × t ↦* v
@@ -164,62 +181,45 @@ module Norm where
   lifts s done = done
   lifts s (step s' j) = step (s s') (lifts s j)
 
-  data SN : A ⊣ Γ → Set where
-    sn : (∀ {t'} → t ↦ t' → SN t') → SN t
+  SN' SN : A ⊣ ε → Set
+
+  SN' {𝟚} _ = Unit
+  SN' {ℕ} _ = Unit
+  SN' {A ⇒ B} t = ∀ u → SN u → SN (app t u)
+
+  SN t = SN' t × t ⇓
+
+  SNs : Γ ~> ε → Set
+  SNs {ε} _ = Unit
+  SNs {_ , _} (σ ×, t) = SNs σ × SN t
 
   sn-pres : t ↦ t' → SN t → SN t'
-  sn-pres' : {t : A ⊣ Γ} → t ↦ t' → SN t' → SN t
+  sn'-pres : t ↦ t' → SN' t → SN' t'
+  sn-pres* : t ↦* t' → SN t → SN t'
+  sn-pres' : t ↦ t' → SN t' → SN t
+  sn'-pres' : t ↦ t' → SN' t' → SN' t
+  sn-pres'* : t ↦* t' → SN t' → SN t
 
-  sn-pres s (sn n) = n s
+  sn-pres s (sn' ×, (v ×, vv ×, j)) = sn'-pres s sn' ×, v ×, vv ×, backstep s vv j
+  
+  sn'-pres {𝟚} s sn' = Data.Unit.tt
+  sn'-pres {ℕ} s sn' = Data.Unit.tt
+  sn'-pres {A ⇒ B} s sn' u snu = sn-pres (ap s) (sn' u snu)
 
-  sn-pres' {t = t} s sn- = sn (λ {u} s' → theo s') where
-    theo : t ↦ u → SN u
-    theo s' with det-↦ s s'
-    ...        | refl = sn-
+  sn-pres* done sn = sn
+  sn-pres* (step s j) sn = sn-pres* j (sn-pres s sn)
+
+  sn-pres' s (sn' ×, (v ×, vv ×, j)) = sn'-pres' s sn' ×, v ×, vv ×, step s j
+
+  sn'-pres' {𝟚} s sn = Data.Unit.tt
+  sn'-pres' {ℕ} s sn = Data.Unit.tt
+  sn'-pres' {A ⇒ B} s sn u snu = sn-pres' (ap s) (sn u snu)
+
+  sn-pres'* done sn = sn
+  sn-pres'* (step s j) sn = sn-pres' s (sn-pres'* j sn)
 
   sn→⇓ : {t : A ⊣ ε} → SN t → t ⇓
-  sn→⇓ {t = ⊤} _ = ⊤ ×, true ×, done
-  sn→⇓ {t = ⊥} _ = ⊥ ×, false ×, done
-  sn→⇓ {t = if t then u else v} (sn n) = sn→⇓ {!!}
-  sn→⇓ {t = if ⊤ then u else v} (sn n) with sn→⇓ (n (here if-⊤))
-  ... | u' ×, v ×, j = u' ×, v ×, step (here if-⊤) j
-  sn→⇓ {t = if ⊥ then u else v} (sn n) with sn→⇓ (n (here if-⊥))
-  ... | v' ×, v ×, j = v' ×, v ×, step (here if-⊥) j
-  sn→⇓ {t = if if t₁ then t₂ else t₃ then u else v} (sn n) = {!!}
-  sn→⇓ {t = if rec t t₁ t₂ then u else v} (sn n) = {!!}
-  sn→⇓ {t = if app t t₁ then u else v} (sn n) = {!!}
-  sn→⇓ {t = nat n} _ = nat n ×, nat ×, done
-  sn→⇓ {t = rec t u v} (sn n) = {!!}
-  sn→⇓ {t = abs t} _ = abs t ×, abs ×, done
-  sn→⇓ {t = app t u} (sn n) = {!!}
-  
-  is-norm : A ⊣ Γ → Set
-  is-norm t = ∀ {t'} → t ↦ t' → Empty
-
-  var-sn : ∀ {e} → SN {A} {Γ} (var e)
-  var-sn = sn λ {(here ())}
-  var-is-norm : ∀ {e} → is-norm {A} {Γ} (var e)
-  var-is-norm (here ())
-
-  abs-sn : {t : B ⊣ (A , Γ)} → SN (abs t)
-  abs-sn = sn λ {(here ())}
-  abs-is-norm : {t : B ⊣ (A , Γ)} → is-norm (abs t)
-  abs-is-norm (here ())
-
-  ⊤-sn : SN {Γ = Γ} ⊤
-  ⊤-sn = sn λ {(here ())}
-  ⊤-is-norm : is-norm {Γ = Γ} ⊤
-  ⊤-is-norm (here ())
-
-  ⊥-sn : SN {Γ = Γ} ⊥
-  ⊥-sn = sn λ {(here ())}
-  ⊥-is-norm : is-norm {Γ = Γ} ⊥
-  ⊥-is-norm (here ())
-
-  nat-sn : SN {Γ = Γ} (nat n)
-  nat-sn = sn λ {(here ())}
-  nat-is-norm : is-norm {Γ = Γ} (nat n)
-  nat-is-norm (here ())
+  sn→⇓ (_ ×, n) = n
 
   -- Theorem 1/2
   -- strong-normalization : (t : A ⊣ Γ) → SN t
@@ -233,192 +233,93 @@ module Norm where
   -- strong-normalization (abs t) = abs-sn
   -- strong-normalization (app t u) = {!!} -- Problem
 
-  SNs : Γ ~> Δ → Set
-  SNs {Γ} σ = ∀ {A} (e : A ∈ Γ) → SN (Sub.sub σ e)
-
   coe : ∀ {l} {A B : Set l} → A ≡ B → A → B
   coe refl a = a
 
+  transp : ∀ {l l'} {A : Set l} {B : A → Set l'} {a b : A}
+         → a ≡ b → B a → B b
+  transp refl x = x
+
   -- Theorem 3
-  fund-thm : {σ : Γ ~> Δ} → (t : A ⊣ Γ) → SNs σ → SN (subst t σ)
+  fund-thm : {σ : Γ ~> ε} → (t : A ⊣ Γ) → SNs σ → SN (subst t σ)
+
+  if-sn' : {u v : A ⊣ ε} → t ⇓ → SN' u → SN' v
+         → SN' (if t then u else v)
+  if-sn' {A = 𝟚} _ _ _ = Data.Unit.tt
+  if-sn' {A = ℕ} _ _ _ = Data.Unit.tt
+  if-sn' {A = A ⇒ B} (⊤ ×, _ ×, j) sn'u _ u' snu'
+    = sn-pres'* ((lifts (λ t → ap (if t)) j) ++ step (ap (here if-⊤)) done)
+                (sn'u u' snu')
+  if-sn' {A = A ⇒ B} (⊥ ×, _ ×, j) _ sn'v u' snu'
+    = sn-pres'* ((lifts (λ t → ap (if t)) j) ++ step (ap (here if-⊥)) done)
+                (sn'v u' snu')
+
+  if-sn : SN t → SN u → SN v → SN (if t then u else v)
+  if-sn (_ ×, ⊤ ×, _ ×, j) (sn'u ×, uv ×, uvv ×, ju) (sn'v ×, _)
+    = if-sn' (⊤ ×, true ×, j) sn'u sn'v ×,
+      uv ×, uvv ×, (lifts if j ++ step (here if-⊤) done) ++ ju
+  if-sn (_ ×, ⊥ ×, _ ×, j) (sn'u ×, _) (sn'v ×, vv ×, vvv ×, jv)
+    = if-sn' (⊥ ×, false ×, j) sn'u sn'v ×,
+      vv ×, vvv ×, ((lifts if j ++ step (here if-⊥) done) ++ jv)
+
+  --rec-sn : SN t → SN u → SN v → SN (rec t u v)
+
+  lemma : {σ : Γ ~> Δ} → subst t (σ ×, u) ≡ subst (subst t (~>↑ σ)) ⟨ u ⟩
+  lemma {t = var e0} {σ = σ} = refl
+  lemma {Γ = A , Γ} {t = var (eS e)} {u = u} {σ = σ ×, v}
+    = {!!}
+  lemma {t = ⊤} = {!!}
+  lemma {t = ⊥} = {!!}
+  lemma {t = if t then u else v} = {!!}
+  lemma {t = nat n} = {!!}
+  lemma {t = rec t u v} = {!!}
+  lemma {t = abs t} = {!!}
+  lemma {t = app t u} = {!!}
+
+  abs-sn : {σ : Γ ~> ε} {t : B ⊣ (A , Γ)} → SNs σ → SN (abs (subst t (~>↑ σ)))
+  abs-sn {σ = σ} {t} sn
+    = (λ u →
+         λ {(sn'u ×, uv ×, uvv ×, j) →
+              let snuv = sn-pres* j (sn'u ×, uv ×, uvv ×, j)
+                  IH = fund-thm t (sn ×, snuv) in
+              sn-pres'* (lifts ap' j) (sn-pres' (here (β uvv)) (transp {B = SN} (lemma {t = t}) IH))}) ×,
+      abs (subst t (~>↑ σ)) ×, abs ×, done
 
   app-sn : SN t → SN u → SN (app t u)
-  app-sn (sn n) (sn n')
-    = sn λ {(ap s) → app-sn (n s) (sn n');
-            (ap' s) → _;
-            (here (β {t = t} true))
-              → fund-thm t λ {
-                  e0 → ⊤-sn;
-                  (eS e) → coe (sym (cong SN (⊸-lift-prop {e = e}))) var-sn
-                };
-            (here (β {t = t} false))
-              → fund-thm t λ {
-                  e0 → ⊥-sn;
-                  (eS e) → coe (sym (cong SN (⊸-lift-prop {e = e}))) var-sn
-                };
-            (here (β {t = t} nat))
-              → fund-thm t λ {
-                  e0 → nat-sn;
-                  (eS e) → coe (sym (cong SN (⊸-lift-prop {e = e}))) var-sn
-                };
-            (here (β {t = t} abs))
-              → fund-thm t λ {
-                  e0 → abs-sn;
-                  (eS e) → coe (sym (cong SN (⊸-lift-prop {e = e}))) var-sn
-                }
-      }
+  app-sn {u = u} (t ×, _) snu = t u snu
 
-  fund-thm (var e) sn- = sn- e
-  fund-thm ⊤ _ = ⊤-sn
-  fund-thm ⊥ _ = ⊥-sn
-  fund-thm (if t then u else v) sn- = {!!}
-  fund-thm (nat n) _ = nat-sn
-  fund-thm (rec t u v) sn- = {!!}
-  fund-thm (abs _) _ = abs-sn
-  fund-thm (app t u) sn- = app-sn (fund-thm t sn-) (fund-thm u sn-)
+  fund-thm (var e0) (_ ×, sn) = sn
+  fund-thm (var (eS e)) (σs ×, _) = fund-thm (var e) σs
+  fund-thm ⊤ _ = Data.Unit.tt ×, ⊤ ×, true ×, done
+  fund-thm ⊥ _ = Data.Unit.tt ×, ⊥ ×, false ×, done
+  fund-thm (if t then u else v) sn
+    = if-sn (fund-thm t sn) (fund-thm u sn) (fund-thm v sn)
+  fund-thm (nat n) _ = Data.Unit.tt ×, nat n ×, nat ×, done
+  fund-thm (rec t u v) sn = {!!}
+  fund-thm (abs t) sn = abs-sn {t = t} sn
+  fund-thm (app t u) sn = app-sn (fund-thm t sn) (fund-thm u sn)
 
-  --WN WN' : A ⊣ ε → Set
-  --WN' {𝟚} t = Unit
-  --WN' {ℕ} t = Unit
-  --WN' {A ⇒ B} t = ∀ u → WN u → WN (app t u)
+  id-subst : {t : A ⊣ Γ} → subst t id* ≡ t
+  id-subst {t = var e} = id*-id
+  id-subst {t = ⊤} = refl
+  id-subst {t = ⊥} = refl
+  id-subst {t = if t then u else v} = trans (trans
+    (cong (λ t → if t then _ else _) id-subst)
+    (cong (λ u → if _ then u else _) id-subst))
+    (cong (λ v → if _ then _ else v) id-subst)
+  id-subst {t = nat x} = refl
+  id-subst {t = rec t u v} = trans (trans
+    (cong (λ t → rec t _ _) id-subst)
+    (cong (λ u → rec _ u _) id-subst))
+    (cong (λ v → rec _ _ v)
+      (trans
+         (cong (subst v) 
+               (trans (cong (λ σ → ~>↑ σ) id*-↑) id*-↑))
+         id-subst))
+  id-subst {t = abs t}
+    = cong abs (trans (cong (subst t) id*-↑) id-subst)
+  id-subst {t = app t u}
+    = trans (cong (λ t → app t _) id-subst) (cong (app _) id-subst)
 
-  --WN t = t ⇓ × WN' t
-
-  -- Lemma (SN Preserved)
-  --wn-pres : t ↦ t' → WN t' → WN t
-  --wn'-pres : {t : A ⊣ ε} → t ↦ t' → WN' t' → WN' t
-  --wn-pres* : t ↦* t' → WN t' → WN t
-  --wn-pres' : t ↦ t' → WN t → WN t'
-  --wn'-pres' : {t : A ⊣ ε} → t ↦ t' → WN' t → WN' t'
-  --wn-pres*' : t ↦* t' → WN t → WN t'
-  
-  --wn-pres s ((v and vv and j) and w) = (v and vv and step s j) and wn'-pres s w
-
-  --wn'-pres {𝟚} s w = Data.Unit.tt
-  --wn'-pres {ℕ} s w = Data.Unit.tt
-  --wn'-pres {A ⇒ B} s w u wu = wn-pres (ap s) (w u wu)
-
-  --wn-pres* done w = w
-  --wn-pres* (step s j) w = wn-pres s (wn-pres* j w)
-
-  --lemma : t ↦ t' → Val v → t ↦* v → t' ↦* v
-  --lemma (here ()) abs done
-  --lemma (here ()) true done
-  --lemma (here ()) false done
-  --lemma (here ()) zero done
-  --lemma (here ()) (succ v) done
-  --lemma s vv (step s' j) with det-↦ s s'
-  --...                       | refl = j
-
-  --wn-pres' {t' = t'} s ((v and vv and j) and w)
-  --  = (v and vv and lemma s vv j) and wn'-pres' s w
-
-  --wn'-pres' {𝟚} s w = Data.Unit.tt
-  --wn'-pres' {ℕ} s w = Data.Unit.tt
-  --wn'-pres' {A ⇒ B} s w u wu = wn-pres' (ap s) (w u wu)
-
-  --wn-pres*' done w = w
-  --wn-pres*' (step s j) w = wn-pres*' j (wn-pres' s w)
-
-  -- Lemma (Substitution)
-  --WNs : Γ ~> ε → Set
-  --WNs {ε} σ = Unit
-  --WNs {A , Γ} (σ and t) = WNs σ × WN t
-  
-  --wn-subst : {σ : Γ ~> ε} → (t : A ⊣ Γ) → WNs σ → WN (subst t σ)
-  --wn-subst (var e0) ws = proj₂ ws
-  --wn-subst (var (eS e)) ws = wn-subst (var e) (proj₁ ws)
-  --wn-subst ⊤ ws = (⊤ and true and done) and Data.Unit.tt
-  --wn-subst ⊥ ws = (⊥ and false and done) and Data.Unit.tt
-  --wn-subst (if t then u else v) ws with wn-subst t ws
-  --... | (⊤ and true and j) and _ = wn-pres* (lifts if j)
-  --                                   (wn-pres (here if-⊤) (wn-subst u ws))
-  --... | (⊥ and false and j) and _ = wn-pres* (lifts if j)
-  --                                   (wn-pres (here if-⊥) (wn-subst v ws))
-  --wn-subst zero ws = (zero and zero and done) and Data.Unit.tt
-  --wn-subst (succ t) ws with wn-subst t ws
-  --... | (zero and zero and j) and _ = (succ zero and succ zero and {!!}) and {!!}
-  --... | (succ t' and (succ v) and j) and snd = {!!}
-  --wn-subst (rec t t₁ t₂) ws = {!!}
-  --wn-subst (abs t) ws = {!!}
-  --wn-subst (app t t₁) ws = {!!}
-
-  --data NormType : Set where
-  --  nf : NormType
-  --  ne : NormType
-
-  --_⇈_ : NormType → NormType → NormType
-  --nf ⇈ nf = nf
-  --nf ⇈ ne = ne
-  --ne ⇈ nf = ne
-  --ne ⇈ ne = ne
-
-  --data [_]-_⊣_ : NormType → Typ → Context → Set where
-  --  var : A ∈ Γ → [ ne ]- A ⊣ Γ
-
-    -- Booleans
-  --  ⊤ : [ nf ]- 𝟚 ⊣ Γ
-  --  ⊥ : [ nf ]- 𝟚 ⊣ Γ
-  --  if_then_else_ : [ ne ]- 𝟚 ⊣ Γ → [ nf ]- A ⊣ Γ → [ nf ]- A ⊣ Γ
-  --                → [ ne ]- A ⊣ Γ
-  --  ne-𝟚 : [ ne ]- 𝟚 ⊣ Γ → [ nf ]- 𝟚 ⊣ Γ
-
-    -- Natural Numbers
-  --  zero : [ nf ]- ℕ ⊣ Γ
-  --  succ : [ nf ]- ℕ ⊣ Γ → [ nf ]- ℕ ⊣ Γ
-  --  rec : [ ne ]- ℕ ⊣ Γ → [ nf ]- A ⊣ Γ → [ nf ]- A ⊣ (A , (ℕ , Γ))
-  --      → [ ne ]- A ⊣ Γ
-  --  ne-ℕ : [ ne ]- ℕ ⊣ Γ → [ nf ]- ℕ ⊣ Γ
-
-    -- Functions
-  --  abs : [ nf ]- B ⊣ (A , Γ) → [ nf ]- (A ⇒ B) ⊣ Γ
-  --  app : [ ne ]- (A ⇒ B) ⊣ Γ → [ nf ]- A ⊣ Γ → [ ne ]- B ⊣ Γ
-
-  --unnorm : ∀ {n} → [ n ]- A ⊣ Γ → A ⊣ Γ
-  --unnorm (var e) = var e
-  --unnorm ⊤ = ⊤
-  --unnorm ⊥ = ⊥
-  --unnorm (if t then u else v) = if unnorm t then unnorm u else unnorm v
-  --unnorm (ne-𝟚 t) = unnorm t
-  --unnorm zero = zero
-  --unnorm (succ t) = succ (unnorm t)
-  --unnorm (rec t u v) = rec (unnorm t) (unnorm u) (unnorm v)
-  --unnorm (ne-ℕ t) = unnorm t
-  --unnorm (abs t) = abs (unnorm t)
-  --unnorm (app t u) = app (unnorm t) (unnorm u)
-
-  --norm : A ⊣ Γ → [ nf ]- A ⊣ Γ
-  --if-norm : 𝟚 ⊣ Γ → A ⊣ Γ → A ⊣ Γ → [ nf ]- A ⊣ Γ
-  --if-norm t u v with norm t
-  --... | ⊤ = norm u
-  --... | ⊥ = norm v
-  --if-norm {A = 𝟚} t u v | ne-𝟚 t' = ne-𝟚 (if t' then norm u else norm v)
-  --if-norm {A = ℕ} t u v | ne-𝟚 t' = ne-ℕ (if t' then norm u else norm v)
-  --if-norm {A = A ⇒ B} t u v | ne-𝟚 t' = abs (if-norm (rename t Ren.wkn)
-  --                                          (app (rename u Ren.wkn) (var e0))
-  --                                          (app (rename v Ren.wkn) (var e0)))
-
-  --rec-norm : ℕ ⊣ Γ → A ⊣ Γ → A ⊣ (A , (ℕ , Γ)) → [ nf ]- A ⊣ Γ
-  --rec-norm t u v with norm t
-  --... | zero = norm u
-  -- rec (succ t) u v ↦c subst v ((id* ,* t) ,* rec t u v)
-  --... | succ t' = {!!} --norm (subst v ((id* ,* (unnorm t')) ,* rec t u v))
-  --rec-norm {A = 𝟚} t u v | ne-ℕ t' = ne-𝟚 (rec t' (norm u) (norm v))
-  --rec-norm {A = ℕ} t u v | ne-ℕ t' = ne-ℕ (rec t' (norm u) (norm v))
-  --rec-norm {A = A ⇒ B} t u v | ne-ℕ t'
-  --  = let s = wkn*' (~>↑ wkn*) ,* abs (var (eS e0)) in
-  --    abs (rec-norm (rename t Ren.wkn)
-  --         (app (rename u Ren.wkn) (var e0))
-  --         (app (subst v s) (var (eS (eS e0)))))
-
-  --norm {𝟚} (var e) = ne-𝟚 (var e)
-  --norm {ℕ} (var e) = ne-ℕ (var e)
-  --norm {A ⇒ B} (var e) = abs {!!}
-  --norm ⊤ = ⊤
-  --norm ⊥ = ⊥
-  --norm (if t then u else v) = if-norm t u v
-  --norm zero = zero
-  --norm (succ t) = succ (norm t)
-  --norm (rec t u v) = rec-norm t u v
-  --norm (abs t) = {!!}
-  --norm (app t t₁) = {!!}
+  eval : {t : A ⊣ ε} → t ⇓
+  eval {t = t} = sn→⇓ (coe (cong SN id-subst) (fund-thm t Data.Unit.tt))

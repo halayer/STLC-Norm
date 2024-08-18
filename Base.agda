@@ -2,6 +2,10 @@ module Base where
 
   open import Data.Nat renaming (ℕ to Nat)
   open import Data.List public using () renaming (_∷_ to _,_; [] to ε)
+  import Data.Unit
+  open import Data.Product using () renaming (_,_ to _×,_)
+  open import Relation.Binary.PropositionalEquality using
+    (_≡_; refl; cong; trans)
 
   data Typ : Set
 
@@ -53,7 +57,7 @@ module Base where
   unlam t = app (rename t wkn) (var e0)
 
   open Sub {_⊣_} using (_~>_; sub)
-  open Properties {_⊣_} {var} {rename} using (~>↑)
+  open Properties {_⊣_} {var} {rename} using (~>↑; ⟨_⟩; wkn*; id*)
   subst : A ⊣ Γ → Γ ~> Δ → A ⊣ Δ
   subst (var e) σ = sub σ e
   subst ⊤ _ = ⊤
@@ -63,3 +67,50 @@ module Base where
   subst (rec t u v) σ = rec (subst t σ) (subst u σ) (subst v (~>↑ (~>↑ σ)))
   subst (abs t) σ = abs (subst t (~>↑ σ))
   subst (app t u) σ = app (subst t σ) (subst u σ)
+
+  open Properties.MoreProperties {_⊣_} {var} {rename} {subst} using (_∘*_)
+
+  sub-decomp : ∀ {e} {ρ : Δ ~> Θ} {σ : Γ ~> Δ} → sub {A = A} (ρ ∘* σ) e ≡ subst (sub σ e) ρ
+  sub-decomp {e = e0} {σ = _ ×, _} = refl
+  sub-decomp {e = eS e} {σ = σ ×, u} = sub-decomp {e = e}
+
+  ↑-funct' : ∀ {e} {ρ : Δ ~> Θ} {σ : Γ ~> Δ} → sub {A = A} (~>↑ {A = B} (ρ ∘* σ)) e ≡ sub (~>↑ ρ ∘* ~>↑ σ) e
+  ↑-funct' {e = e0} = refl
+  ↑-funct' {Γ = _ , _} {e = eS e} {σ = σ ×, u} = {!!}
+
+  ↑-funct : {ρ : Δ ~> Θ} {σ : Γ ~> Δ} → subst t (~>↑ {A = A} (ρ ∘* σ)) ≡ subst t (~>↑ ρ ∘* ~>↑ σ)
+  ↑-funct {t = var e} = ↑-funct' {e = e}
+  ↑-funct {t = ⊤} = refl
+  ↑-funct {t = ⊥} = refl
+  ↑-funct {t = if t then u else v} = {!!}
+  ↑-funct {t = nat _} = refl
+  ↑-funct {t = rec t u v} = {!!}
+  ↑-funct {t = abs t} = {!!}
+  ↑-funct {t = app t u} = {!!}
+
+  subst-decomp : {ρ : Δ ~> Θ} {σ : Γ ~> Δ} → subst t (ρ ∘* σ) ≡ subst (subst t σ) ρ
+  subst-decomp {t = var e} = sub-decomp {e = e}
+  subst-decomp {t = ⊤} = refl
+  subst-decomp {t = ⊥} = refl
+  subst-decomp {t = if t then u else v} = trans (trans
+    (cong (λ t → if t then _ else _) (subst-decomp {t = t}))
+    (cong (λ u → if _ then u else _) (subst-decomp {t = u})))
+    (cong (λ v → if _ then _ else v) (subst-decomp {t = v}))
+  subst-decomp {t = nat _} = refl
+  subst-decomp {t = rec t u v} = trans (trans
+    (cong (λ t → rec t _ _) (subst-decomp {t = t}))
+    (cong (λ u → rec _ u _) (subst-decomp {t = u})))
+    (cong (λ v → rec _ _ v) (trans {!!} (subst-decomp {t = v})))
+  subst-decomp {t = abs t} {ρ = ρ} {σ = σ} = cong abs (trans {!!} (subst-decomp {t = t}))
+  subst-decomp {t = app t u} = {!!}
+
+  pair-eq : ∀ {l l'} {A : Set l} {B : Set l'} {a a' : A} {b b' : B}
+          → a ≡ a' → b ≡ b' → (a ×, b) ≡ (a' ×, b')
+  pair-eq refl refl = refl
+
+  --lemma : Data.Product.proj₁ wkn* ≡
+
+  wkn-ext-id : {t : A ⊣ Γ} → ⟨ t ⟩ ∘* wkn* ≡ id* {Γ}
+  wkn-ext-id {Γ = ε} = refl
+  wkn-ext-id {Γ = A , Γ} = pair-eq {!!} refl
+
