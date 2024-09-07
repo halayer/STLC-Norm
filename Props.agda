@@ -14,7 +14,7 @@ module Props where
 
   private variable
     A B : Typ
-    Γ Δ Θ : Context
+    Γ Δ Θ E : Context
     t : A ⊣ Γ
 
   -- Renaming Properties
@@ -198,89 +198,94 @@ module Props where
     helper _ e0 = ⊸→~>-rename-subst
     helper _ (eS e) = cong (sub e) test
 
-  --wkn-step : {σ : Γ ~> Δ}
-  --         → (p : ∀ A (e : A ∈ Γ) → Σ (A ∈ Δ) λ e' → sub σ e ≡ var e')
-  --         → (∀ A B (e : A ∈ Γ) →
-  --              sub (wkn*' {A = B} σ) e ≡ var (eS (proj₁ (p A e))))
-  --wkn-step : {r : Γ ⊸ Δ}
-  --         → (∀ A B (e : A ∈ Γ) →
-  --              (wkn ∙rr r) A e ≡ eS (r A e))
-  --wkn-step {Γ = _ , _} {σ = σ' ×, t} p A B e0 = {!!}
-  --wkn-step {Γ = _ , _} {σ = σ' ×, t} p A B (eS e) = {!!}
+  ∙rrr-assoc : {r'' : Θ ⊸ E} {r' : Δ ⊸ Θ} {r : Γ ⊸ Δ}
+             → r'' ∙rr (r' ∙rr r) ≡ (r'' ∙rr r') ∙rr r
+  ∙rrr-assoc {Γ = Γ} {r'' = r''} {r'} {r} = ⊸-ext helper where
+    helper : (A : Typ) (e : A ∈ Γ)
+           → ren e (r'' ∙rr (r' ∙rr r)) ≡ ren e ((r'' ∙rr r') ∙rr r)
+    helper _ e0 = {!!}
+    helper A (eS e) = {!!}
 
-  --id*-↑ : ∀ {e} → sub {A = A} (~>↑ {A = B} (id* {Γ = Γ})) e ≡ sub id* e
-  --id*-↑ = refl
+  ↑-∙rr : {r' : Δ ⊸ Θ} {r : Γ ⊸ Δ}
+        → ⊸-↑ {A = A} r' ∙rr ⊸-↑ r ≡ ⊸-↑ (r' ∙rr r)
+  ↑-∙rr {Γ = Γ} {r' = r'} {r} = ⊸-ext helper where
+    helper : (A : Typ) (e : A ∈ (B , Γ))
+           → ren e (⊸-↑ r' ∙rr ⊸-↑ r) ≡ ren e (⊸-↑ (r' ∙rr r))
+    helper _ e0 = refl
+    helper A (eS e) = cong (ren e) {!!}
 
-  --lemma' : {r : Γ ⊸ Δ} → wkn {A = A} ∙rr r ≡ ⊸↑ r ∙rr wkn
-  --lemma' = refl
+  ↑-∙rs : {r : Δ ⊸ Θ} {σ : Γ ~> Δ}
+        → ⊸-↑ {A = A} r ∙rs ~>-↑ σ ≡ ~>-↑ (r ∙rs σ)
+  ↑-∙rs {Γ = Γ} {r = r} {σ} = ~>-ext helper where
+    helper : (A : Typ) (e : A ∈ (B , Γ))
+           → sub e (⊸-↑ r ∙rs ~>-↑ σ) ≡ sub e (~>-↑ (r ∙rs σ))
+    helper _ e0 = refl
+    helper A (eS e) = cong (sub e) {!!}
 
-  --⊸-lift-↑ : {r : Γ ⊸ Δ} {e : A ∈ (B , Γ)}
-  --         → sub (~>↑ (⊸-lift r)) e ≡ sub (⊸-lift (⊸↑ r)) e
-  --⊸-lift-↑ {e = e0} = refl
-  --⊸-lift-↑ {_ , _} {r = r} {eS e} = helper where
-  --  helper' : (wkn ∙rr r) ≡ (⊸-tail (⊸↑ {A = B} r))
-  --  helper' = refl
-  --  helper'' : ∀ {A B e} → sub {A = A} (wkn {A = B} ∙rs ⊸-lift r) e ≡ sub (⊸-lift (wkn ∙rr r)) e
-  --  helper'' {e = e0} = refl
-  --  helper'' {e = eS e} = {!!}
-  --  helper : sub (wkn ∙rs (⊸-lift r)) e ≡ sub (⊸-lift (⊸-tail (⊸↑ r))) e
-  --  helper = cong
-  --    (λ σ → sub σ e)
-  --    (s-ext λ A e → trans
-  --       (helper'' {e = e})
-  --       (cong (λ r → sub (⊸-lift r) e) helper'))
-  
-  --lemma : {σ : Γ ~> Δ} → ∀ {e}
-  --      → sub {A = A} (wkn {A = B} ∙rs σ) e ≡ sub (~>↑ σ ∙sr wkn) e
-  --lemma {_ , _} {e = e0} = refl
-  --lemma {_ , _} {e = eS e} = {!!}
-  --lemma {ε} = refl
-  --lemma {_ , _} {σ = σ ×, t} = pair-eq (trans (lemma {σ = σ}) {!!} ×, refl)
+  ∙rs-decomp : {r : Δ ⊸ Θ} {σ : Γ ~> Δ}
+             → rename (subst t σ) r ≡ subst t (r ∙rs σ)
+  ∙rs-decomp {t = var e} {r = r} = helper {e = e} where
+    helper : ∀ {e} {r : Δ ⊸ Θ} {σ : Γ ~> Δ}
+           → rename {A = A} (sub e σ) r ≡ sub e (r ∙rs σ)
+    helper {e = e0} = refl
+    helper {e = eS e} = helper {e = e}
+  ∙rs-decomp {t = ⊤} = refl
+  ∙rs-decomp {t = ⊥} = refl
+  ∙rs-decomp {t = if t then u else v} = trans (trans
+    (cong (λ t → if t then _ else _) (∙rs-decomp {t = t}))
+    (cong (λ u → if _ then u else _) (∙rs-decomp {t = u})))
+    (cong (λ v → if _ then _ else v) (∙rs-decomp {t = v}))
+  ∙rs-decomp {t = nat _} = refl
+  ∙rs-decomp {t = rec t u v} = trans (trans
+    (cong (λ t → rec t _ _) (∙rs-decomp {t = t}))
+    (cong (λ u → rec _ u _) (∙rs-decomp {t = u})))
+    (cong (λ v → rec _ _ v) (trans (∙rs-decomp {t = v}) (cong (subst v) {!!})))
+  ∙rs-decomp {t = abs t} {r = r} {σ} =
+    cong abs (trans (∙rs-decomp {t = t}) (cong (subst t) ↑-∙rs))
+  ∙rs-decomp {t = app t u} = trans
+    (cong (λ t → app t _) (∙rs-decomp {t = t}))
+    (cong (λ u → app _ u) (∙rs-decomp {t = u}))
 
-  sub→subst : {σ : Γ ~> Δ}
-            → (∀ A (e : A ∈ Γ) → sub e σ ≡ {!!})
-            → (∀ A (t : A ⊣ Γ) → subst t σ ≡ {!!})
+  ∙rss-assoc : {r : Θ ⊸ E} {ρ : Δ ~> Θ} {σ : Γ ~> Δ}
+             → r ∙rs (ρ ∙ss σ) ≡ (r ∙rs ρ) ∙ss σ
+  ∙rss-assoc {Γ = Γ} {r = r} {ρ} {σ} = ~>-ext helper where
+    helper : (A : Typ) (e : A ∈ Γ)
+           → sub e (r ∙rs (ρ ∙ss σ)) ≡ sub e ((r ∙rs ρ) ∙ss σ)
+    helper _ e0 = {!!}
+    helper _ (eS e) = {!!}
 
-  ↑-funct : {ρ : Δ ~> Θ} {σ : Γ ~> Δ} → ~>-↑ {A = A} (ρ ∙ss σ) ≡ ~>-↑ ρ ∙ss ~>-↑ σ
-  ↑-funct {Γ = ε} = refl
-  ↑-funct {Γ = _ , _} {ρ = ρ} {σ = σ ×, t} = pair-eq ((pair-eq (helper ×, {!!})) ×, refl) where
-    subst-rename : ∀ {Γ Δ} {t : A ⊣ Γ} {r : Γ ⊸ Δ} → subst t (⊸→~> r) ≡ rename t r
-    subst-rename {t = var e} = ⊸→~>-≡ refl
-    subst-rename {t = ⊤} = refl
-    subst-rename {t = ⊥} = refl
-    subst-rename {t = if t then u else v} = {!!}
-    subst-rename {t = nat _} = refl
-    subst-rename {t = rec t u v} = {!!}
-    subst-rename {t = abs t} = cong abs {!!}
-    subst-rename {t = app t u} = {!!}
-    ss-rs : ∀ {Γ Δ Θ} → {r : Δ ⊸ Θ} {σ : Γ ~> Δ} → ⊸→~> r ∙ss σ ≡ r ∙rs σ
-    ss-rs {Γ = ε} {σ = Data.Unit.tt} = refl
-    ss-rs {Γ = _ , _} {σ = σ ×, t} = pair-eq (ss-rs ×, {!!})
-    helper : ⊸-wkn' ∙rs (ρ ∙ss σ) ≡ ~>-↑ ρ ∙ss (⊸-wkn' ∙rs σ)
-    helper = {!!}
+  ↑-∙ss : {ρ : Δ ~> Θ} {σ : Γ ~> Δ} → ~>-↑ {A = A} (ρ ∙ss σ) ≡ ~>-↑ ρ ∙ss ~>-↑ σ
+  ↑-∙ss {Δ = Δ} {Γ = Γ} {ρ = ρ} {σ} = ~>-ext helper where
+    lemma : {e : A ∈ Δ} → sub e (~>-↑ ρ ∙sr ⊸-wkn') ≡ sub e (⊸-wkn' ∙rs ρ)
+    lemma {e = e0} = refl
+    lemma {e = eS e} = cong (sub e) {!!}
+    helper : (A : Typ) (e : A ∈ (B , Γ))
+           → sub e (~>-↑ (ρ ∙ss σ)) ≡ sub e (~>-↑ ρ ∙ss ~>-↑ σ)
+    helper _ e0 = refl
+    helper A (eS e) = cong (sub e) {!!}
 
-  sub-decomp : ∀ {e} {ρ : Δ ~> Θ} {σ : Γ ~> Δ} → sub {A = A} e (ρ ∙ss σ) ≡ subst (sub e σ) ρ
-  sub-decomp {e = e0} = refl
-  sub-decomp {e = eS e} = sub-decomp {e = e}
-
-  subst-decomp : {ρ : Δ ~> Θ} {σ : Γ ~> Δ} → subst t (ρ ∙ss σ) ≡ subst (subst t σ) ρ
-  subst-decomp {t = t} = sub→subst (λ A e → sub-decomp {e = e}) _ t
-  subst-decomp {t = var e} = sub-decomp {e = e}
-  subst-decomp {t = ⊤} = refl
-  subst-decomp {t = ⊥} = refl
-  subst-decomp {t = if t then u else v} = trans (trans
-    (cong (λ t → if t then _ else _) (subst-decomp {t = t}))
-    (cong (λ u → if _ then u else _) (subst-decomp {t = u})))
-    (cong (λ v → if _ then _ else v) (subst-decomp {t = v}))
-  subst-decomp {t = nat _} = refl
-  subst-decomp {t = rec t u v} = trans (trans
-    (cong (λ t → rec t _ _) (subst-decomp {t = t}))
-    (cong (λ u → rec _ u _) (subst-decomp {t = u})))
+  ∙ss-decomp : {ρ : Δ ~> Θ} {σ : Γ ~> Δ} → subst t (ρ ∙ss σ) ≡ subst (subst t σ) ρ
+  ∙ss-decomp {t = var e} = helper {e = e} where
+    helper : ∀ {e} {ρ : Δ ~> Θ} {σ : Γ ~> Δ} → sub {A = A} e (ρ ∙ss σ) ≡ subst (sub e σ) ρ
+    helper {e = e0} = refl
+    helper {e = eS e} = helper {e = e}
+  ∙ss-decomp {t = ⊤} = refl
+  ∙ss-decomp {t = ⊥} = refl
+  ∙ss-decomp {t = if t then u else v} = trans (trans
+    (cong (λ t → if t then _ else _) (∙ss-decomp {t = t}))
+    (cong (λ u → if _ then u else _) (∙ss-decomp {t = u})))
+    (cong (λ v → if _ then _ else v) (∙ss-decomp {t = v}))
+  ∙ss-decomp {t = nat _} = refl
+  ∙ss-decomp {t = rec t u v} = trans (trans
+    (cong (λ t → rec t _ _) (∙ss-decomp {t = t}))
+    (cong (λ u → rec _ u _) (∙ss-decomp {t = u})))
     (cong (λ v → rec _ _ v) {!!})
-  subst-decomp {t = abs t} {ρ = ρ} {σ = σ} = cong
+  ∙ss-decomp {t = abs t} {ρ = ρ} {σ = σ} = cong
     abs
-    (trans (cong (subst t) (↑-funct {ρ = ρ} {σ = σ})) (subst-decomp {t = t}))
-  subst-decomp {t = app t u} = {!!}
+    (trans (cong (subst t) (↑-∙ss {ρ = ρ} {σ = σ})) (∙ss-decomp {t = t}))
+  ∙ss-decomp {t = app t u} = trans
+    (cong (λ t → app t _) (∙ss-decomp {t = t}))
+    (cong (λ u → app _ u) (∙ss-decomp {t = u}))
 
   --lemma : Data.Product.proj₁ wkn* ≡
 
