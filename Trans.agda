@@ -17,9 +17,6 @@ module Trans {Typ : Set} where
 
   module Ren where
 
-    --open import Relation.Binary.Properties.DecTotalOrder
-    open import Relation.Binary.PropositionalEquality.Core
-
     _⊸_ : Context → Context → Set
     _⊸_ Γ Δ = ∀ A → A ∈ Γ → A ∈ Δ
 
@@ -29,19 +26,22 @@ module Trans {Typ : Set} where
     ⊸-trans : Γ ⊸ Δ → Δ ⊸ Θ → Γ ⊸ Θ
     ⊸-trans r r' A e = r' A (r A e)
 
-    ⊸↑ : Γ ⊸ Δ → (A , Γ) ⊸ (A , Δ)
-    ⊸↑ r A e0 = e0
-    ⊸↑ r A (eS e) = eS (r A e)
+    _∙rr_ : Δ ⊸ Θ → Γ ⊸ Δ → Γ ⊸ Θ
+    _∙rr_ r r' = ⊸-trans r' r
 
     ⊸-tail : (A , Γ) ⊸ Δ → Γ ⊸ Δ
     ⊸-tail σ A e = σ A (eS e)
 
+    wkn : Γ ⊸ (A , Γ)
+    wkn = ⊸-tail ⊸-refl
+    -- wkn _ = eS
+
+    ⊸↑ : Γ ⊸ Δ → (A , Γ) ⊸ (A , Δ)
+    ⊸↑ r A e0 = e0
+    ⊸↑ r A (eS e) = eS (r A e)
+
     --⊸-antisym : Γ ⊸ Δ → Δ ⊸ Γ → Γ ≡ Δ
     --⊸-antisym r r' = {!!}
-
-    wkn : Γ ⊸ (A , Γ)
-    --wkn _ = eS
-    wkn = ⊸-tail ⊸-refl
 
   module Sub {_⊣_ : Typ → Context → Set} where
 
@@ -54,8 +54,8 @@ module Trans {Typ : Set} where
     (A , Γ) ~> Δ = Γ ~> Δ × A ⊣ Δ
 
     sub : Γ ~> Δ → A ∈ Γ → A ⊣ Δ
-    sub (σ ×, a) e0 = a
-    sub (σ ×, a) (eS e) = sub σ e
+    sub (_ ×, a) e0 = a
+    sub (σ ×, _) (eS e) = sub σ e
 
     ε* : ε ~> Γ
     ε* = tt
@@ -66,63 +66,58 @@ module Trans {Typ : Set} where
     {rename : ∀ {A Γ Δ} → A ⊣ Γ → Γ Ren.⊸ Δ → A ⊣ Δ} where
 
     open import Data.Product using (∃-syntax; proj₁; proj₂) renaming (_,_ to _×,_)
-    open import Relation.Binary.PropositionalEquality
-
+    open import Data.Product.Properties using () renaming (×-≡,≡→≡ to pair-eq)
+    open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans)
     open import Data.Unit using (tt)
-    import Data.Product
 
     open Ren
     open Sub {_⊣_}
 
     ⊸-lift : Γ ⊸ Δ → Γ ~> Δ
     ⊸-lift {ε} r = tt
-    ⊸-lift {A , Γ} r = ⊸-lift (⊸-tail r) ×, var (r A e0)
+    ⊸-lift {A , _} r = ⊸-lift (⊸-tail r) ×, var (r A e0)
 
     ⊸-lift-prop : {e : A ∈ Γ} {r : Γ ⊸ Δ}
                 → sub (⊸-lift r) e ≡ var (r A e)
     ⊸-lift-prop {e = e0} = refl
     ⊸-lift-prop {A} {e = eS e} {r} = ⊸-lift-prop {e = e} {⊸-tail r}
 
-    ⊸-lift-≡ : {r : Γ ⊸ Δ} → ((e : A ∈ Γ) → ∃[ e' ] r A e ≡ e')
-             → (e : A ∈ Γ) → ∃[ e' ] sub (⊸-lift r) e ≡ var e'
-    ⊸-lift-≡ {r = r} eq e with eq e
-    ...                      | e' ×, refl = e' ×, ⊸-lift-prop {r = r}
+    s-ext : {ρ σ : Γ ~> Δ}
+      → (∀ A (e : A ∈ Γ) → sub σ e ≡ sub ρ e)
+      → σ ≡ ρ
+    s-ext {ε} _ = refl
+    s-ext {_ , _} p = pair-eq (s-ext (λ A e → p A (eS e)) ×, p _ e0)
 
-    _∙*_ : Δ ⊸ Θ → Γ ~> Δ → Γ ~> Θ
-    _∙*_ {Γ = ε} r σ = tt
-    _∙*_ {Γ = A , Γ} r (σ ×, t) = (r ∙* σ) ×, rename t r
+    _∙rs_ : Δ ⊸ Θ → Γ ~> Δ → Γ ~> Θ
+    _∙rs_ {Γ = ε} _ tt = tt
+    _∙rs_ {Γ = _ , _} r (σ ×, t) = (r ∙rs σ) ×, rename t r
+
+    ~>↑ : Γ ~> Δ → (A , Γ) ~> (A , Δ)
+    ~>↑ σ = (wkn ∙rs σ) ×, var e0
 
     wkn*' : Γ ~> Δ → Γ ~> (A , Δ)
-    wkn*' {ε} _ = tt
-    --wkn*' {_ , _} σ = wkn ∙* σ
-    wkn*' {_ , _} (σ ×, t) = wkn*' σ ×, rename t wkn
+    wkn*' σ = wkn ∙rs σ
+    --wkn*' {ε} _ = tt
+    --wkn*' {_ , _} (σ ×, t) = wkn*' σ ×, rename t wkn
 
     id* : Γ ~> Γ
-    id* = ⊸-lift ⊸-refl
-    --id* {ε} = tt
-    --id* {A , Γ} = wkn*' id* ×, var e0
-
-    id*-id : {e : A ∈ Γ} → sub id* e ≡ (var e)
-    id*-id = ⊸-lift-prop {r = ⊸-refl}
-    --id*-id {Γ = A , Γ} {e0} = refl
-    --id*-id {Γ = A , Γ} {eS e} = {!!}
+    --id* = ⊸-lift ⊸-refl
+    id* {ε} = tt
+    id* {_ , _} = wkn*' id* ×, var e0
 
     wkn* : Γ ~> (A , Γ)
     wkn* = wkn*' id*
 
-    ~>↑ : Γ ~> Δ → (A , Γ) ~> (A , Δ)
-    ~>↑ σ = (wkn ∙* σ) ×, var e0
-
-    postulate id*-↑ : ~>↑ {A = A} (id* {Γ}) ≡ id*
-    --id*-↑ {Γ = ε} = {!!}
-    --id*-↑ {Γ = A , Γ} = {!!}
-
     ⟨_⟩ : A ⊣ Γ → (A , Γ) ~> Γ
     ⟨ t ⟩ = id* ×, t
+
+    _∙sr_ : Δ ~> Θ → Γ ⊸ Δ → Γ ~> Θ
+    _∙sr_ {Γ = ε} σ r = tt
+    _∙sr_ {Γ = _ , _} σ r = (σ ∙sr (r ∙rr wkn)) ×, sub σ (r _ e0)
 
     module MoreProperties
       {subst : ∀ {A Γ Δ} → A ⊣ Γ → Γ ~> Δ → A ⊣ Δ} where
 
-      _∘*_ : ∀ {Γ} → Δ ~> Θ → Γ ~> Δ → Γ ~> Θ
-      _∘*_ {Γ = ε} _ _ = tt
-      _∘*_ {Γ = A , Γ} ρ σ = (ρ ∘* (proj₁ σ)) ×, subst (sub σ e0) ρ
+      _∙ss_ : Δ ~> Θ → Γ ~> Δ → Γ ~> Θ
+      _∙ss_ {Γ = ε} _ tt = tt
+      _∙ss_ {Γ = _ , _} ρ (σ ×, t) = (ρ ∙ss σ) ×, subst (sub (σ ×, t) e0) ρ
