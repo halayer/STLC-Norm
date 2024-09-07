@@ -11,13 +11,9 @@ module Norm where
     using (_≡_; refl; sym; cong; trans)
   open import Relation.Nullary.Decidable using (Dec; yes; no)
 
-  open import Base hiding (unlam; e0; eS; lemma)
-  open import Trans {Typ} using (e0; eS)
-  open Ren using (wkn)
-  open Sub {_⊣_} using (_~>_; sub)
-  open Properties {_⊣_} {var} {rename} using
-    (id*; ⟨_⟩; ~>↑; wkn*; wkn*'; ⊸-lift-prop; s-ext; _∙rs_; _∙sr_)
-  open Properties.MoreProperties {_⊣_} {var} {rename} {subst}
+  open import Base
+  open import Trans {Typ} hiding (_~>_)
+  open import Props
 
   private variable
     A B : Typ
@@ -38,7 +34,7 @@ module Norm where
     if-⊤ : (if ⊤ then t else u) ↦c t
     if-⊥ : (if ⊥ then t else u) ↦c u
     ℕ-β  : rec (nat zero) u v ↦c u
-    ℕ-β' : rec {Γ = Γ} (nat (suc n)) u v ↦c subst v ((id* ×, (nat n)) ×, rec (nat n) u v)
+    ℕ-β' : rec {Γ = Γ} (nat (suc n)) u v ↦c subst v ((~>-refl ×, (nat n)) ×, rec (nat n) u v)
 
   data _↦_ : A ⊣ Γ → A ⊣ Γ → Set where
     here : t ↦c t' → t ↦ t'
@@ -100,7 +96,7 @@ module Norm where
                       (_ ×, (rec {t' = t'} s)) → ns (t' ×, s)}
   next-↦ (rec (nat zero) u _) = yes (u ×, here ℕ-β)
   next-↦ (rec (nat (suc n)) u v)
-    = yes (subst v ((id* ×, (nat n)) ×, rec (nat n) u v) ×, here ℕ-β')
+    = yes (subst v ((~>-refl ×, (nat n)) ×, rec (nat n) u v) ×, here ℕ-β')
   next-↦ (rec (rec t₁ t₂ t₃) u v) with next-↦ (rec t₁ t₂ t₃)
   ... | yes (t' ×, s) = yes ((rec t' u v) ×, rec s)
   ... | no ns = no λ {(_ ×, here ());
@@ -264,17 +260,13 @@ module Norm where
 
   --rec-sn : SN t → SN u → SN v → SN (rec t u v)
 
-  wkn-and-add : {e : A ∈ Γ} {t : B ⊣ Γ} → sub (⟨ t ⟩ ∙sr wkn) e ≡ sub id* e
-  wkn-and-add {e = e0} = refl
-  wkn-and-add {e = eS e} = {!!}
-
-  lemma : {σ : Γ ~> ε} → subst t (σ ×, u) ≡ subst (subst t (~>↑ σ)) ⟨ u ⟩
+  lemma : {σ : Γ ~> ε} → subst t (σ ×, u) ≡ subst (subst t (~>-↑ σ)) ⟨ u ⟩
   lemma {Γ = Γ} {t = t} {σ = σ} =
-    trans (cong (subst t) (s-ext (λ _ e → helper {e = e})))
-          (subst-decomp {t = t} {σ = ~>↑ σ}) where
-    helper : {e : A ∈ (B , Γ)} → sub (σ ×, u) e ≡ sub ((Data.Unit.tt ×, u) ∙ss ~>↑ σ) e
+    trans (cong (subst t) (~>-ext (λ _ e → helper {e = e})))
+          (subst-decomp {t = t} {σ = ~>-↑ σ}) where
+    helper : {e : A ∈ (B , Γ)} → sub (σ ×, u) e ≡ sub ((Data.Unit.tt ×, u) ∙ss ~>-↑ σ) e
     helper {e = e0} = refl
-    helper {e = eS e} = cong (λ σ → sub σ e) (s-ext λ _ → λ {e0 → {!!}; (eS e) → {!!}})
+    helper {e = eS e} = cong (λ σ → sub σ e) (~>-ext λ _ → λ {e0 → {!!}; (eS e) → {!!}})
 
   abs-sn : {σ : Γ ~> ε} {t : B ⊣ (A , Γ)} → SNs σ → SN (abs (subst t (~>↑ σ)))
   abs-sn {σ = σ} {t} sn
