@@ -263,12 +263,12 @@ module Norm where
   lemma : {σ : Γ ~> ε} → subst t (σ ×, u) ≡ subst (subst t (~>-↑ σ)) ⟨ u ⟩
   lemma {Γ = Γ} {t = t} {σ = σ} =
     trans (cong (subst t) (~>-ext (λ _ e → helper {e = e})))
-          (subst-decomp {t = t} {σ = ~>-↑ σ}) where
-    helper : {e : A ∈ (B , Γ)} → sub (σ ×, u) e ≡ sub ((Data.Unit.tt ×, u) ∙ss ~>-↑ σ) e
+          (∙ss-decomp {t = t} {σ = ~>-↑ σ}) where
+    helper : {e : A ∈ (B , Γ)} → sub e (σ ×, u) ≡ sub e ((Data.Unit.tt ×, u) ∙ss ~>-↑ σ)
     helper {e = e0} = refl
-    helper {e = eS e} = cong (λ σ → sub σ e) (~>-ext λ _ → λ {e0 → {!!}; (eS e) → {!!}})
+    helper {e = eS e} = cong (sub e) (~>-ext λ _ → λ {e0 → {!!}; (eS e) → {!!}})
 
-  abs-sn : {σ : Γ ~> ε} {t : B ⊣ (A , Γ)} → SNs σ → SN (abs (subst t (~>↑ σ)))
+  abs-sn : {σ : Γ ~> ε} {t : B ⊣ (A , Γ)} → SNs σ → SN (abs (subst t (~>-↑ σ)))
   abs-sn {σ = σ} {t} sn
     = (λ u →
          λ {(sn'u ×, uv ×, uvv ×, j) →
@@ -277,7 +277,7 @@ module Norm where
               sn-pres'*
                 (lifts ap' j)
                 (sn-pres' (here (β uvv)) (transp {B = SN} (lemma {t = t}) IH))}) ×,
-              abs (subst t (~>↑ σ)) ×, abs ×, done
+              abs (subst t (~>-↑ σ)) ×, abs ×, done
 
   app-sn : SN t → SN u → SN (app t u)
   app-sn {u = u} (t ×, _) snu = t u snu
@@ -293,30 +293,5 @@ module Norm where
   fund-thm (abs t) sn = abs-sn {t = t} sn
   fund-thm (app t u) sn = app-sn (fund-thm t sn) (fund-thm u sn)
 
-  id-subst : {t : A ⊣ Γ} → subst t id* ≡ t
-  id-subst {t = var e} = id*-id
-  id-subst {t = ⊤} = refl
-  id-subst {t = ⊥} = refl
-  id-subst {t = if t then u else v} = trans (trans
-    (cong (λ t → if t then _ else _) id-subst)
-    (cong (λ u → if _ then u else _) id-subst))
-    (cong (λ v → if _ then _ else v) id-subst)
-  id-subst {t = nat x} = refl
-  id-subst {t = rec t u v} = trans (trans
-    (cong (λ t → rec t _ _) id-subst)
-    (cong (λ u → rec _ u _) id-subst))
-    (cong (λ v → rec _ _ v)
-      (trans
-         (cong (subst v) 
-               (trans (cong (λ σ → ~>↑ σ)
-                            (s-ext (λ A e → id*-↑ {e = e})))
-                      (s-ext (λ A e → id*-↑ {e = e}))))
-         id-subst))
-  id-subst {t = abs t}
-    = cong abs (trans (cong (subst t) (s-ext (λ A e → id*-↑ {e = e})))
-                      id-subst)
-  id-subst {t = app t u}
-    = trans (cong (λ t → app t _) id-subst) (cong (app _) id-subst)
-
   eval : {t : A ⊣ ε} → t ⇓
-  eval {t = t} = sn→⇓ (coe (cong SN id-subst) (fund-thm t Data.Unit.tt))
+  eval {t = t} = sn→⇓ (coe (cong SN {!!}) (fund-thm t Data.Unit.tt))

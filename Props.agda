@@ -1,3 +1,5 @@
+{-# OPTIONS --allow-unsolved-metas #-}
+
 module Props where
 
   open import Relation.Binary.PropositionalEquality using
@@ -43,6 +45,7 @@ module Props where
 
   ⊸-wkn' : Γ ⊸ (A , Γ)
   ⊸-wkn' = ⊸-wkn ⊸-refl
+  --⊸-wkn' = ⊸-tail ⊸-refl
 
   ⊸-trans : Γ ⊸ Δ → Δ ⊸ Θ → Γ ⊸ Θ
   ⊸-trans {ε} _ _ = tt
@@ -53,6 +56,9 @@ module Props where
 
   ⊸-↑ : Γ ⊸ Δ → (A , Γ) ⊸ (A , Δ)
   ⊸-↑ r = (⊸-wkn' ∙rr r) ×, e0
+
+  ⊸-⟨_⟩ : A ∈ Γ → (A , Γ) ⊸ Γ
+  ⊸-⟨_⟩ e = ⊸-refl ×, e
 
   rename : A ⊣ Γ → Γ ⊸ Δ → A ⊣ Δ
   rename (var {A} e) r = var (ren e r)
@@ -191,28 +197,93 @@ module Props where
     (cong (λ t → app t _) ⊸→~>-rename-subst)
     (cong (λ u → app _ u) ⊸→~>-rename-subst)
 
-  test : {σ : Γ ~> Δ} → ~>-wkn {A = A} σ ≡ ~>-wkn' ∙ss σ
-  test {Γ = Γ} {σ = σ} = ~>-ext helper where
+  ~>-wkn-decomp : {σ : Γ ~> Δ} → ~>-wkn {A = A} σ ≡ ~>-wkn' ∙ss σ
+  ~>-wkn-decomp {Γ = Γ} {σ = σ} = ~>-ext helper where
     helper : (A : Typ) (e : A ∈ Γ)
            → sub e (~>-wkn σ) ≡ sub e (~>-wkn' ∙ss σ)
     helper _ e0 = ⊸→~>-rename-subst
-    helper _ (eS e) = cong (sub e) test
+    helper _ (eS e) = cong (sub e) ~>-wkn-decomp
 
   ∙rrr-assoc : {r'' : Θ ⊸ E} {r' : Δ ⊸ Θ} {r : Γ ⊸ Δ}
              → r'' ∙rr (r' ∙rr r) ≡ (r'' ∙rr r') ∙rr r
   ∙rrr-assoc {Γ = Γ} {r'' = r''} {r'} {r} = ⊸-ext helper where
+    ren-decomp : {Γ : Context} {r' : Δ ⊸ Θ} {r : Γ ⊸ Δ} {e : A ∈ Γ}
+               → ren (ren e r) r' ≡ ren e (r' ∙rr r)
+    ren-decomp {e = e0} = refl
+    ren-decomp {e = eS e} = ren-decomp {e = e}
     helper : (A : Typ) (e : A ∈ Γ)
            → ren e (r'' ∙rr (r' ∙rr r)) ≡ ren e ((r'' ∙rr r') ∙rr r)
-    helper _ e0 = {!!}
-    helper A (eS e) = {!!}
+    helper _ e0 = ren-decomp {r' = r''} {r'} {⊸-head r}
+    helper A (eS e) = cong (ren e) ∙rrr-assoc
+
+  ⊸-refl-∙rr-id : {r : Γ ⊸ Δ} → ⊸-refl ∙rr r ≡ r
+  ⊸-refl-∙rr-id {Γ = ε} = refl
+  ⊸-refl-∙rr-id {Γ = _ , _} {r = r@(r' ×, e)} =
+    pair-eq (⊸-refl-∙rr-id ×, ⊸-refl-id)
+  extend-⟨⟩ : {r : Γ ⊸ Δ} {e : A ∈ Δ}
+            → (r ×, e) ≡ ⊸-⟨ e ⟩ ∙rr ⊸-↑ r
+  ⊸-wkn-⟨⟩-id : {e : A ∈ Γ} → ⊸-⟨ e ⟩ ∙rr ⊸-wkn' ≡ ⊸-refl
+  ⊸-wkn-⟨⟩-id {Γ = ε} = refl
+  ⊸-wkn-⟨⟩-id {Γ = _ , Γ} {e = e} = pair-eq (trans (trans (trans
+    (cong (_∙rr_ ⊸-⟨ e ⟩) ⊸-wkn-decomp)
+    (∙rrr-assoc {r'' = ⊸-⟨ e ⟩} {r' = ⊸-wkn'} {r = ⊸-wkn'}))
+    (cong (λ r → r ∙rr ⊸-wkn') {!!}))
+    ⊸-refl-∙rr-id ×,
+    refl)
+  extend-⟨⟩ {Γ = ε} {r = tt} = refl
+  extend-⟨⟩ {Γ = _ , _} {r = r} {e = e} = pair-eq (sym (trans (trans
+    (∙rrr-assoc {r'' = ⊸-⟨ e ⟩} {r' = ⊸-wkn'} {r = r})
+    (cong (λ r'' → r'' ∙rr r) ⊸-wkn-⟨⟩-id))
+    ⊸-refl-∙rr-id) ×,
+    refl)
 
   ↑-∙rr : {r' : Δ ⊸ Θ} {r : Γ ⊸ Δ}
         → ⊸-↑ {A = A} r' ∙rr ⊸-↑ r ≡ ⊸-↑ (r' ∙rr r)
-  ↑-∙rr {Γ = Γ} {r' = r'} {r} = ⊸-ext helper where
-    helper : (A : Typ) (e : A ∈ (B , Γ))
-           → ren e (⊸-↑ r' ∙rr ⊸-↑ r) ≡ ren e (⊸-↑ (r' ∙rr r))
-    helper _ e0 = refl
-    helper A (eS e) = cong (ren e) {!!}
+  ↑-∙rr {Γ = ε} = refl
+  ↑-∙rr {Γ = _ , _} {r = r} = pair-eq
+    (trans (trans (∙rrr-assoc {r = r})
+                  (cong (λ r' → r' ∙rr r) helper))
+           (sym (∙rrr-assoc {r = r})) ×,
+     refl) where
+    helper' : {r' : Δ ⊸ Θ} {r : (A , Γ) ⊸ Δ}
+            → r' ∙rr (⊸-tail r) ≡ ⊸-tail (r' ∙rr r)
+    helper' = refl
+    helper : {Γ : Context} {r : Γ ⊸ Δ}
+           → ⊸-↑ {A = A} r ∙rr ⊸-wkn' ≡ ⊸-wkn' ∙rr r
+    helper {Γ = ε} = refl
+    helper {Γ = _ , _} {r@(r' ×, e)} =
+      pair-eq ({!!} ×, refl)
+
+  test : {r : Γ ⊸ Δ} {e : A ∈ Δ}
+       → (r ×, e) ∙rr ⊸-wkn' ≡ r
+  test {Γ = ε} {r = tt} = refl
+  test {Γ = _ , _} {r = r@(r' ×, e')} = pair-eq ({!!} ×, refl)
+
+  ∙rr-decomp : {r' : Δ ⊸ Θ} {r : Γ ⊸ Δ}
+             → rename (rename t r) r' ≡ rename t (r' ∙rr r)
+  ∙rr-decomp {t = var e} = cong var (helper {e = e}) where
+    helper : ∀ {e} {r' : Δ ⊸ Θ} {r : Γ ⊸ Δ}
+           → ren {A = A} (ren e r) r' ≡ ren e (r' ∙rr r)
+    helper {e = e0} = refl
+    helper {e = eS e} = helper {e = e}
+  ∙rr-decomp {t = ⊤} = refl
+  ∙rr-decomp {t = ⊥} = refl
+  ∙rr-decomp {t = if t then u else v} = trans (trans
+    (cong (λ t → if t then _ else _) (∙rr-decomp {t = t}))
+    (cong (λ u → if _ then u else _) (∙rr-decomp {t = u})))
+    (cong (λ v → if _ then _ else v) (∙rr-decomp {t = v}))
+  ∙rr-decomp {t = nat _} = refl
+  ∙rr-decomp {t = rec t u v} {r = r} = trans (trans
+    (cong (λ t → rec t _ _) (∙rr-decomp {t = t}))
+    (cong (λ u → rec _ u _) (∙rr-decomp {t = u})))
+    (cong (λ v → rec _ _ v)
+          (trans (∙rr-decomp {t = v})
+                 (cong (rename _) (trans (↑-∙rr {r = ⊸-↑ r}) (cong ⊸-↑ ↑-∙rr)))))
+  ∙rr-decomp {t = abs t} =
+    cong abs (trans ∙rr-decomp (cong (rename _) ↑-∙rr))
+  ∙rr-decomp {t = app t u} = trans
+    (cong (λ t → app t _) (∙rr-decomp {t = t}))
+    (cong (λ u → app _ u) (∙rr-decomp {t = u}))
 
   ↑-∙rs : {r : Δ ⊸ Θ} {σ : Γ ~> Δ}
         → ⊸-↑ {A = A} r ∙rs ~>-↑ σ ≡ ~>-↑ (r ∙rs σ)
@@ -236,10 +307,14 @@ module Props where
     (cong (λ u → if _ then u else _) (∙rs-decomp {t = u})))
     (cong (λ v → if _ then _ else v) (∙rs-decomp {t = v}))
   ∙rs-decomp {t = nat _} = refl
-  ∙rs-decomp {t = rec t u v} = trans (trans
+  ∙rs-decomp {t = rec t u v} {r = r} {σ} = trans (trans
     (cong (λ t → rec t _ _) (∙rs-decomp {t = t}))
     (cong (λ u → rec _ u _) (∙rs-decomp {t = u})))
-    (cong (λ v → rec _ _ v) (trans (∙rs-decomp {t = v}) (cong (subst v) {!!})))
+    (cong (λ v → rec _ _ v)
+          (trans (∙rs-decomp {t = v})
+                 (cong (subst v)
+                       (trans (↑-∙rs {r = ⊸-↑ r} {~>-↑ σ})
+                              (cong ~>-↑ ↑-∙rs)))))
   ∙rs-decomp {t = abs t} {r = r} {σ} =
     cong abs (trans (∙rs-decomp {t = t}) (cong (subst t) ↑-∙rs))
   ∙rs-decomp {t = app t u} = trans
@@ -256,7 +331,7 @@ module Props where
 
   ↑-∙ss : {ρ : Δ ~> Θ} {σ : Γ ~> Δ} → ~>-↑ {A = A} (ρ ∙ss σ) ≡ ~>-↑ ρ ∙ss ~>-↑ σ
   ↑-∙ss {Δ = Δ} {Γ = Γ} {ρ = ρ} {σ} = ~>-ext helper where
-    lemma : {e : A ∈ Δ} → sub e (~>-↑ ρ ∙sr ⊸-wkn') ≡ sub e (⊸-wkn' ∙rs ρ)
+    lemma : {e : A ∈ Δ} → sub e (~>-↑ {A = B} ρ ∙sr ⊸-wkn') ≡ sub e (⊸-wkn' ∙rs ρ)
     lemma {e = e0} = refl
     lemma {e = eS e} = cong (sub e) {!!}
     helper : (A : Typ) (e : A ∈ (B , Γ))
@@ -280,15 +355,8 @@ module Props where
     (cong (λ t → rec t _ _) (∙ss-decomp {t = t}))
     (cong (λ u → rec _ u _) (∙ss-decomp {t = u})))
     (cong (λ v → rec _ _ v) {!!})
-  ∙ss-decomp {t = abs t} {ρ = ρ} {σ = σ} = cong
-    abs
-    (trans (cong (subst t) (↑-∙ss {ρ = ρ} {σ = σ})) (∙ss-decomp {t = t}))
+  ∙ss-decomp {t = abs t} {ρ = ρ} {σ} =
+    cong abs (trans (cong (subst t) ↑-∙ss) (∙ss-decomp {t = t}))
   ∙ss-decomp {t = app t u} = trans
     (cong (λ t → app t _) (∙ss-decomp {t = t}))
     (cong (λ u → app _ u) (∙ss-decomp {t = u}))
-
-  --lemma : Data.Product.proj₁ wkn* ≡
-
-  --wkn-ext-id : {t : A ⊣ Γ} → ⟨ t ⟩ ∙ss wkn* ≡ id* {Γ}
-  --wkn-ext-id {Γ = ε} = refl
-  --wkn-ext-id {Γ = A , Γ} = pair-eq ({!!} ×, refl)
