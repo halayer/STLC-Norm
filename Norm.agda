@@ -4,8 +4,10 @@ module Norm where
 
   open import Data.Product using (_×_; ∃-syntax; Σ-syntax; proj₁; proj₂)
     renaming (_,_ to _×,_)
+  open import Data.Product.Properties using ()
+    renaming (×-≡,≡→≡ to pair-eq)
   open import Data.Empty using () renaming (⊥ to Empty)
-  open import Data.Unit using () renaming (⊤ to Unit)
+  open import Data.Unit using (tt) renaming (⊤ to Unit)
   open import Data.Nat using (suc; zero) renaming (ℕ to Nat)
   open import Relation.Binary.PropositionalEquality
     using (_≡_; refl; sym; cong; trans)
@@ -13,7 +15,9 @@ module Norm where
 
   open import Base
   open import Trans {Typ} hiding (_~>_)
-  open import Props
+  open import Props using
+    (⊸-wkn'; _~>_; ~>-refl; ~>-wkn'; ~>-↑; ⟨_⟩; _∙ss_;
+     subst; ~>-ext; ~>-refl-∙ss-id; ∙ss-decomp; ∙srs-assoc)
 
   private variable
     A B : Typ
@@ -198,8 +202,8 @@ module Norm where
 
   sn-pres s (sn' ×, (v ×, vv ×, j)) = sn'-pres s sn' ×, v ×, vv ×, backstep s vv j
   
-  sn'-pres {𝟚} s sn' = Data.Unit.tt
-  sn'-pres {ℕ} s sn' = Data.Unit.tt
+  sn'-pres {𝟚} s sn' = tt
+  sn'-pres {ℕ} s sn' = tt
   sn'-pres {A ⇒ B} s sn' u snu = sn-pres (ap s) (sn' u snu)
 
   sn-pres* done sn = sn
@@ -207,8 +211,8 @@ module Norm where
 
   sn-pres' s (sn' ×, (v ×, vv ×, j)) = sn'-pres' s sn' ×, v ×, vv ×, step s j
 
-  sn'-pres' {𝟚} s sn = Data.Unit.tt
-  sn'-pres' {ℕ} s sn = Data.Unit.tt
+  sn'-pres' {𝟚} s sn = tt
+  sn'-pres' {ℕ} s sn = tt
   sn'-pres' {A ⇒ B} s sn u snu = sn-pres' (ap s) (sn u snu)
 
   sn-pres'* done sn = sn
@@ -241,8 +245,8 @@ module Norm where
 
   if-sn' : {u v : A ⊣ ε} → t ⇓ → SN' u → SN' v
          → SN' (if t then u else v)
-  if-sn' {A = 𝟚} _ _ _ = Data.Unit.tt
-  if-sn' {A = ℕ} _ _ _ = Data.Unit.tt
+  if-sn' {A = 𝟚} _ _ _ = tt
+  if-sn' {A = ℕ} _ _ _ = tt
   if-sn' {A = A ⇒ B} (⊤ ×, _ ×, j) sn'u _ u' snu'
     = sn-pres'* ((lifts (λ t → ap (if t)) j) ++ step (ap (here if-⊤)) done)
                 (sn'u u' snu')
@@ -258,15 +262,20 @@ module Norm where
     = if-sn' (⊥ ×, false ×, j) sn'u sn'v ×,
       vv ×, vvv ×, ((lifts if j ++ step (here if-⊥) done) ++ jv)
 
-  --rec-sn : SN t → SN u → SN v → SN (rec t u v)
-
   lemma : {σ : Γ ~> ε} → subst t (σ ×, u) ≡ subst (subst t (~>-↑ σ)) ⟨ u ⟩
-  lemma {Γ = Γ} {t = t} {σ = σ} =
-    trans (cong (subst t) (~>-ext (λ _ e → helper {e = e})))
-          (∙ss-decomp {t = t} {σ = ~>-↑ σ}) where
-    helper : {e : A ∈ (B , Γ)} → sub e (σ ×, u) ≡ sub e ((Data.Unit.tt ×, u) ∙ss ~>-↑ σ)
-    helper {e = e0} = refl
-    helper {e = eS e} = cong (sub e) (~>-ext λ _ → λ {e0 → {!!}; (eS e) → {!!}})
+  lemma {t = t} {σ = σ} = trans
+    (cong (subst t) helper)
+    (∙ss-decomp {t = t} {σ = ~>-↑ σ}) where
+    helper : {σ : Γ ~> ε} {u : A ⊣ ε}
+           → (σ ×, u) ≡ (tt ×, u) ∙ss ~>-↑ σ
+    helper {Γ = ε} = refl
+    helper {Γ = _ , _} {A = A} {σ = σ} = pair-eq (sym (trans
+      (∙srs-assoc {r = ⊸-wkn' {A = A}} {σ = σ})
+      ~>-refl-∙ss-id) ×,
+      refl)
+
+  rec-sn : {σ : Γ ~> ε} {t : ℕ ⊣ ε} {u : A ⊣ ε}
+         → SNs σ → SN t → SN u → SN (rec t u (subst v (~>-↑ (~>-↑ σ))))
 
   abs-sn : {σ : Γ ~> ε} {t : B ⊣ (A , Γ)} → SNs σ → SN (abs (subst t (~>-↑ σ)))
   abs-sn {σ = σ} {t} sn
@@ -284,14 +293,15 @@ module Norm where
 
   fund-thm (var e0) (_ ×, sn) = sn
   fund-thm (var (eS e)) (σs ×, _) = fund-thm (var e) σs
-  fund-thm ⊤ _ = Data.Unit.tt ×, ⊤ ×, true ×, done
-  fund-thm ⊥ _ = Data.Unit.tt ×, ⊥ ×, false ×, done
-  fund-thm (if t then u else v) sn
-    = if-sn (fund-thm t sn) (fund-thm u sn) (fund-thm v sn)
-  fund-thm (nat n) _ = Data.Unit.tt ×, nat n ×, nat ×, done
-  fund-thm (rec t u v) sn = {!!}
+  fund-thm ⊤ _ = tt ×, ⊤ ×, true ×, done
+  fund-thm ⊥ _ = tt ×, ⊥ ×, false ×, done
+  fund-thm (if t then u else v) sn =
+    if-sn (fund-thm t sn) (fund-thm u sn) (fund-thm v sn)
+  fund-thm (nat n) _ = tt ×, nat n ×, nat ×, done
+  fund-thm (rec t u v) sn =
+    rec-sn {v = v} sn (fund-thm t sn) (fund-thm u sn)
   fund-thm (abs t) sn = abs-sn {t = t} sn
   fund-thm (app t u) sn = app-sn (fund-thm t sn) (fund-thm u sn)
 
   eval : {t : A ⊣ ε} → t ⇓
-  eval {t = t} = sn→⇓ (coe (cong SN {!!}) (fund-thm t Data.Unit.tt))
+  eval {t = t} = sn→⇓ (coe (cong SN ?) (fund-thm t tt))

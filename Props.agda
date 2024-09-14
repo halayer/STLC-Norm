@@ -70,19 +70,12 @@ module Props where
   rename (abs t) r = abs (rename t (⊸-↑ r))
   rename (app t u) r = app (rename t r) (rename u r)
 
-  ⊸-ext : {r r' : Γ ⊸ Δ}
-        → (∀ A (e : A ∈ Γ) → ren e r ≡ ren e r')
-        → r ≡ r'
-  ⊸-ext {ε} _ = refl
-  ⊸-ext {_ , _} p = pair-eq (⊸-ext (λ A e → p A (eS e)) ×, p _ e0)
-
   ⊸-wkn-decomp : {r : Γ ⊸ Δ} → ⊸-wkn {A = A} r ≡ ⊸-wkn' ∙rr r
-  ⊸-wkn-decomp {Γ = Γ} {r = r} = ⊸-ext helper where
-    helper : (A : Typ) (e : A ∈ Γ) → ren e (⊸-wkn r) ≡ ren e (⊸-wkn' ∙rr r)
-    helper _ e0 =
-      sym (trans (⊸-wkn-prop {r = ⊸-refl} {e = ⊸-head r})
-                 (cong eS ⊸-refl-id))
-    helper _ (eS e) = cong (ren e) ⊸-wkn-decomp
+  ⊸-wkn-decomp {Γ = ε} = refl
+  ⊸-wkn-decomp {Γ = _ , _} {r = r} = pair-eq
+    (⊸-wkn-decomp ×,
+     sym (trans (⊸-wkn-prop {r = ⊸-refl} {e = ⊸-head r})
+                (cong eS ⊸-refl-id)))
 
   -- Substitution Properties
   ⊸→~> : Γ ⊸ Δ → Γ ~> Δ
@@ -136,6 +129,7 @@ module Props where
 
   ~>-↑ : Γ ~> Δ → (A , Γ) ~> (A , Δ)
   ~>-↑ σ = (⊸-wkn' ∙rs σ) ×, var e0
+  --~>-↑ σ = (~>-wkn σ) ×, var e0
 
   subst (var e) σ = sub e σ
   subst ⊤ _ = ⊤
@@ -146,32 +140,20 @@ module Props where
   subst (abs t) σ = abs (subst t (~>-↑ σ))
   subst (app t u) σ = app (subst t σ) (subst u σ)
 
-  ~>-ext : {ρ σ : Γ ~> Δ}
-         → (∀ A (e : A ∈ Γ) → sub e σ ≡ sub e ρ)
-         → σ ≡ ρ
-  ~>-ext {ε} _ = refl
-  ~>-ext {_ , _} p = pair-eq (~>-ext (λ A e → p A (eS e)) ×, p _ e0)
-
   ⊸-tail→~>-tail : {r : (A , Γ) ⊸ Δ}
                  → ~>-tail (⊸→~> r) ≡ ⊸→~> (⊸-tail r)
   ⊸-tail→~>-tail {Γ = Γ} {r = r} = refl
 
-  ∙rs→∙rr : {r : Γ ⊸ Δ} {r' : Δ ⊸ Θ}
+  ∙rs→∙rr : {r' : Δ ⊸ Θ} {r : Γ ⊸ Δ}
           → r' ∙rs (⊸→~> r) ≡ ⊸→~> (r' ∙rr r)
-  ∙rs→∙rr {Γ = Γ} {r = r} {r'} = ~>-ext helper where
-    helper : (A : Typ) (e : A ∈ Γ)
-           → sub e (r' ∙rs (⊸→~> r)) ≡ sub e (⊸→~> (r' ∙rr r))
-    helper _ e0 = refl
-    helper A (eS e) = cong
-      (sub e)
-      (trans (cong (_∙rs_ r') (⊸-tail→~>-tail {r = r})) ∙rs→∙rr)
+  ∙rs→∙rr {Γ = ε} = refl
+  ∙rs→∙rr {Γ = _ , _} {r' = r'} {r} = pair-eq
+    (trans (cong (_∙rs_ r') (⊸-tail→~>-tail {r = r})) ∙rs→∙rr ×,
+     refl)
 
   ~>-↑-⊸-↑ : {r : Γ ⊸ Δ} → ~>-↑ {A = A} (⊸→~> r) ≡ ⊸→~> (⊸-↑ r)
-  ~>-↑-⊸-↑ {Γ = Γ} {r = r} = ~>-ext helper where
-    helper : (A : Typ) (e : A ∈ (B , Γ))
-           → sub e (~>-↑ (⊸→~> r)) ≡ sub e (⊸→~> (⊸-↑ r))
-    helper _ e0 = refl
-    helper {B = B} _ (eS e) = cong (sub e) ∙rs→∙rr
+  ~>-↑-⊸-↑ {Γ = ε} = refl
+  ~>-↑-⊸-↑ {Γ = _ , _} {r = r} = pair-eq (∙rs→∙rr {r = r} ×, refl)
 
   ⊸→~>-rename-subst : {r : Γ ⊸ Δ} {t : A ⊣ Γ}
                     → rename t r ≡ subst t (⊸→~> r)
@@ -198,23 +180,21 @@ module Props where
     (cong (λ u → app _ u) ⊸→~>-rename-subst)
 
   ~>-wkn-decomp : {σ : Γ ~> Δ} → ~>-wkn {A = A} σ ≡ ~>-wkn' ∙ss σ
-  ~>-wkn-decomp {Γ = Γ} {σ = σ} = ~>-ext helper where
-    helper : (A : Typ) (e : A ∈ Γ)
-           → sub e (~>-wkn σ) ≡ sub e (~>-wkn' ∙ss σ)
-    helper _ e0 = ⊸→~>-rename-subst
-    helper _ (eS e) = cong (sub e) ~>-wkn-decomp
+  ~>-wkn-decomp {Γ = ε} = refl
+  ~>-wkn-decomp {Γ = _ , _} {σ = σ} = pair-eq
+    (~>-wkn-decomp ×,
+     {!!})
 
   ∙rrr-assoc : {r'' : Θ ⊸ E} {r' : Δ ⊸ Θ} {r : Γ ⊸ Δ}
              → r'' ∙rr (r' ∙rr r) ≡ (r'' ∙rr r') ∙rr r
-  ∙rrr-assoc {Γ = Γ} {r'' = r''} {r'} {r} = ⊸-ext helper where
+  ∙rrr-assoc {Γ = ε} = refl
+  ∙rrr-assoc {Γ = _ , _} {r'' = r''} {r'} {r} = pair-eq
+    ({!!} ×,
+     ren-decomp {r' = r''} {r'} {e = ⊸-head r}) where
     ren-decomp : {Γ : Context} {r' : Δ ⊸ Θ} {r : Γ ⊸ Δ} {e : A ∈ Γ}
                → ren (ren e r) r' ≡ ren e (r' ∙rr r)
     ren-decomp {e = e0} = refl
     ren-decomp {e = eS e} = ren-decomp {e = e}
-    helper : (A : Typ) (e : A ∈ Γ)
-           → ren e (r'' ∙rr (r' ∙rr r)) ≡ ren e ((r'' ∙rr r') ∙rr r)
-    helper _ e0 = ren-decomp {r' = r''} {r'} {⊸-head r}
-    helper A (eS e) = cong (ren e) ∙rrr-assoc
 
   ⊸-refl-∙rr-id : {r : Γ ⊸ Δ} → ⊸-refl ∙rr r ≡ r
   ⊸-refl-∙rr-id {Γ = ε} = refl
@@ -287,11 +267,15 @@ module Props where
 
   ↑-∙rs : {r : Δ ⊸ Θ} {σ : Γ ~> Δ}
         → ⊸-↑ {A = A} r ∙rs ~>-↑ σ ≡ ~>-↑ (r ∙rs σ)
-  ↑-∙rs {Γ = Γ} {r = r} {σ} = ~>-ext helper where
-    helper : (A : Typ) (e : A ∈ (B , Γ))
-           → sub e (⊸-↑ r ∙rs ~>-↑ σ) ≡ sub e (~>-↑ (r ∙rs σ))
-    helper _ e0 = refl
-    helper A (eS e) = cong (sub e) {!!}
+  ↑-∙rs {Γ = ε} = refl
+  ↑-∙rs {Γ = _ , _} {r = r} {σ} = pair-eq
+    ({!!} ×,
+     refl)
+  --↑-∙rs {Γ = Γ} {r = r} {σ} = ~>-ext helper where
+  --  helper : (A : Typ) (e : A ∈ (B , Γ))
+  --         → sub e (⊸-↑ r ∙rs ~>-↑ σ) ≡ sub e (~>-↑ (r ∙rs σ))
+  --  helper _ e0 = refl
+  --  helper A (eS e) = cong (sub e) {!!}
 
   ∙rs-decomp : {r : Δ ⊸ Θ} {σ : Γ ~> Δ}
              → rename (subst t σ) r ≡ subst t (r ∙rs σ)
@@ -323,21 +307,21 @@ module Props where
 
   ∙rss-assoc : {r : Θ ⊸ E} {ρ : Δ ~> Θ} {σ : Γ ~> Δ}
              → r ∙rs (ρ ∙ss σ) ≡ (r ∙rs ρ) ∙ss σ
-  ∙rss-assoc {Γ = Γ} {r = r} {ρ} {σ} = ~>-ext helper where
-    helper : (A : Typ) (e : A ∈ Γ)
-           → sub e (r ∙rs (ρ ∙ss σ)) ≡ sub e ((r ∙rs ρ) ∙ss σ)
-    helper _ e0 = {!!}
-    helper _ (eS e) = {!!}
+  ∙rss-assoc {Γ = ε} = refl
+  ∙rss-assoc {Γ = _ , _} = pair-eq ({!!} ×, {!!})
+
+  ~>-refl-∙ss-id : {σ : Γ ~> Δ} → ~>-refl ∙ss σ ≡ σ
+  ~>-refl-∙ss-id {Γ = ε} = refl
+  ~>-refl-∙ss-id {Γ = _ , _} = pair-eq ({!!} ×, {!!})
+
+  ∙srs-assoc : {ρ : Θ ~> E} {r : Δ ⊸ Θ} {σ : Γ ~> Δ}
+             → ρ ∙ss (r ∙rs σ) ≡ (ρ ∙sr r) ∙ss σ
+  ∙srs-assoc {Γ = ε} = refl
+  ∙srs-assoc {Γ = _ , _} = pair-eq ({!!} ×, {!!})
 
   ↑-∙ss : {ρ : Δ ~> Θ} {σ : Γ ~> Δ} → ~>-↑ {A = A} (ρ ∙ss σ) ≡ ~>-↑ ρ ∙ss ~>-↑ σ
-  ↑-∙ss {Δ = Δ} {Γ = Γ} {ρ = ρ} {σ} = ~>-ext helper where
-    lemma : {e : A ∈ Δ} → sub e (~>-↑ {A = B} ρ ∙sr ⊸-wkn') ≡ sub e (⊸-wkn' ∙rs ρ)
-    lemma {e = e0} = refl
-    lemma {e = eS e} = cong (sub e) {!!}
-    helper : (A : Typ) (e : A ∈ (B , Γ))
-           → sub e (~>-↑ (ρ ∙ss σ)) ≡ sub e (~>-↑ ρ ∙ss ~>-↑ σ)
-    helper _ e0 = refl
-    helper A (eS e) = cong (sub e) {!!}
+  ↑-∙ss {Γ = ε} = refl
+  ↑-∙ss {Γ = _ , _} = pair-eq ({!!} ×, refl)
 
   ∙ss-decomp : {ρ : Δ ~> Θ} {σ : Γ ~> Δ} → subst t (ρ ∙ss σ) ≡ subst (subst t σ) ρ
   ∙ss-decomp {t = var e} = helper {e = e} where
