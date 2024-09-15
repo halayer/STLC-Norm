@@ -17,7 +17,7 @@ module Norm where
   open import Trans {Typ} hiding (_~>_)
   open import Props using
     (⊸-wkn'; _~>_; ~>-refl; ~>-wkn'; ~>-↑; ⟨_⟩; _∙ss_;
-     subst; ~>-ext; ~>-refl-∙ss-id; ∙ss-decomp; ∙srs-assoc)
+     subst; ~>-refl-∙ss-id; ∙ss-decomp; ∙srs-assoc)
 
   private variable
     A B : Typ
@@ -304,4 +304,4 @@ module Norm where
   fund-thm (app t u) sn = app-sn (fund-thm t sn) (fund-thm u sn)
 
   eval : {t : A ⊣ ε} → t ⇓
-  eval {t = t} = sn→⇓ (coe (cong SN ?) (fund-thm t tt))
+  eval {t = t} = sn→⇓ (coe (cong SN {!!}) (fund-thm t tt))

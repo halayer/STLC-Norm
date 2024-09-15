@@ -1,4 +1,4 @@
-{-# OPTIONS --allow-unsolved-metas #-}
+--{-# OPTIONS --allow-unsolved-metas #-}
 
 module Props where
 
@@ -182,15 +182,14 @@ module Props where
   ~>-wkn-decomp : {σ : Γ ~> Δ} → ~>-wkn {A = A} σ ≡ ~>-wkn' ∙ss σ
   ~>-wkn-decomp {Γ = ε} = refl
   ~>-wkn-decomp {Γ = _ , _} {σ = σ} = pair-eq
-    (~>-wkn-decomp ×,
-     {!!})
+    (~>-wkn-decomp ×, ⊸→~>-rename-subst)
 
   ∙rrr-assoc : {r'' : Θ ⊸ E} {r' : Δ ⊸ Θ} {r : Γ ⊸ Δ}
              → r'' ∙rr (r' ∙rr r) ≡ (r'' ∙rr r') ∙rr r
   ∙rrr-assoc {Γ = ε} = refl
   ∙rrr-assoc {Γ = _ , _} {r'' = r''} {r'} {r} = pair-eq
-    ({!!} ×,
-     ren-decomp {r' = r''} {r'} {e = ⊸-head r}) where
+    (∙rrr-assoc ×,
+     ren-decomp {r' = r''} {r'} {⊸-head r}) where
     ren-decomp : {Γ : Context} {r' : Δ ⊸ Θ} {r : Γ ⊸ Δ} {e : A ∈ Γ}
                → ren (ren e r) r' ≡ ren e (r' ∙rr r)
     ren-decomp {e = e0} = refl
@@ -200,20 +199,17 @@ module Props where
   ⊸-refl-∙rr-id {Γ = ε} = refl
   ⊸-refl-∙rr-id {Γ = _ , _} {r = r@(r' ×, e)} =
     pair-eq (⊸-refl-∙rr-id ×, ⊸-refl-id)
-  extend-⟨⟩ : {r : Γ ⊸ Δ} {e : A ∈ Δ}
-            → (r ×, e) ≡ ⊸-⟨ e ⟩ ∙rr ⊸-↑ r
-  ⊸-wkn-⟨⟩-id : {e : A ∈ Γ} → ⊸-⟨ e ⟩ ∙rr ⊸-wkn' ≡ ⊸-refl
+
+  ⊸-wkn-⟨⟩-id : {r : Γ ⊸ Δ} {e : A ∈ Δ} → ⊸-⟨ e ⟩ ∙rr (⊸-wkn r) ≡ r
   ⊸-wkn-⟨⟩-id {Γ = ε} = refl
-  ⊸-wkn-⟨⟩-id {Γ = _ , Γ} {e = e} = pair-eq (trans (trans (trans
-    (cong (_∙rr_ ⊸-⟨ e ⟩) ⊸-wkn-decomp)
-    (∙rrr-assoc {r'' = ⊸-⟨ e ⟩} {r' = ⊸-wkn'} {r = ⊸-wkn'}))
-    (cong (λ r → r ∙rr ⊸-wkn') {!!}))
-    ⊸-refl-∙rr-id ×,
-    refl)
-  extend-⟨⟩ {Γ = ε} {r = tt} = refl
-  extend-⟨⟩ {Γ = _ , _} {r = r} {e = e} = pair-eq (sym (trans (trans
-    (∙rrr-assoc {r'' = ⊸-⟨ e ⟩} {r' = ⊸-wkn'} {r = r})
-    (cong (λ r'' → r'' ∙rr r) ⊸-wkn-⟨⟩-id))
+  ⊸-wkn-⟨⟩-id {Γ = _ , _} = pair-eq (⊸-wkn-⟨⟩-id ×, ⊸-refl-id)
+
+  ⊸-extend-⟨⟩ : {r : Γ ⊸ Δ} {e : A ∈ Δ}
+              → (r ×, e) ≡ ⊸-⟨ e ⟩ ∙rr ⊸-↑ r
+  ⊸-extend-⟨⟩ {Γ = ε} = refl
+  ⊸-extend-⟨⟩ {Γ = _ , _} {r = r} = pair-eq (sym (trans (trans
+    (∙rrr-assoc {r'' = ⊸-⟨ _ ⟩} {⊸-wkn'} {r})
+    (cong (λ r' → r' ∙rr r) (⊸-wkn-⟨⟩-id {r = ⊸-refl})))
     ⊸-refl-∙rr-id) ×,
     refl)
 
@@ -225,19 +221,11 @@ module Props where
                   (cong (λ r' → r' ∙rr r) helper))
            (sym (∙rrr-assoc {r = r})) ×,
      refl) where
-    helper' : {r' : Δ ⊸ Θ} {r : (A , Γ) ⊸ Δ}
-            → r' ∙rr (⊸-tail r) ≡ ⊸-tail (r' ∙rr r)
-    helper' = refl
     helper : {Γ : Context} {r : Γ ⊸ Δ}
            → ⊸-↑ {A = A} r ∙rr ⊸-wkn' ≡ ⊸-wkn' ∙rr r
     helper {Γ = ε} = refl
     helper {Γ = _ , _} {r@(r' ×, e)} =
       pair-eq ({!!} ×, refl)
-
-  test : {r : Γ ⊸ Δ} {e : A ∈ Δ}
-       → (r ×, e) ∙rr ⊸-wkn' ≡ r
-  test {Γ = ε} {r = tt} = refl
-  test {Γ = _ , _} {r = r@(r' ×, e')} = pair-eq ({!!} ×, refl)
 
   ∙rr-decomp : {r' : Δ ⊸ Θ} {r : Γ ⊸ Δ}
              → rename (rename t r) r' ≡ rename t (r' ∙rr r)
