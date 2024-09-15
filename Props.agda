@@ -221,6 +221,15 @@ module Props where
                   (cong (λ r' → r' ∙rr r) helper))
            (sym (∙rrr-assoc {r = r})) ×,
      refl) where
+    helper' : {Γ : Context} {r' : Δ ⊸ Θ} {r : Γ ⊸ Δ}
+            → ⊸-↑ {A = A} r' ∙rr (⊸-wkn r) ≡ (⊸-wkn' ∙rr r') ∙rr r
+    helper' {Γ = ε} = refl
+    helper' {Γ = _ , _} {r' = r'} {r} = pair-eq (trans (trans (trans
+      (cong (_∙rr_ (⊸-↑ r')) ⊸-wkn-decomp)
+      (∙rrr-assoc {r'' = ⊸-↑ r'} {⊸-wkn'} {⊸-tail r}))
+      (cong (λ r' → r' ∙rr (⊸-tail r)) (helper' {r' = r'} {⊸-refl})))
+      {!!} ×,
+      refl)
     helper : {Γ : Context} {r : Γ ⊸ Δ}
            → ⊸-↑ {A = A} r ∙rr ⊸-wkn' ≡ ⊸-wkn' ∙rr r
     helper {Γ = ε} = refl
@@ -259,11 +268,6 @@ module Props where
   ↑-∙rs {Γ = _ , _} {r = r} {σ} = pair-eq
     ({!!} ×,
      refl)
-  --↑-∙rs {Γ = Γ} {r = r} {σ} = ~>-ext helper where
-  --  helper : (A : Typ) (e : A ∈ (B , Γ))
-  --         → sub e (⊸-↑ r ∙rs ~>-↑ σ) ≡ sub e (~>-↑ (r ∙rs σ))
-  --  helper _ e0 = refl
-  --  helper A (eS e) = cong (sub e) {!!}
 
   ∙rs-decomp : {r : Δ ⊸ Θ} {σ : Γ ~> Δ}
              → rename (subst t σ) r ≡ subst t (r ∙rs σ)
