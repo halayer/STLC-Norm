@@ -213,6 +213,20 @@ module Props where
     ⊸-refl-∙rr-id) ×,
     refl)
 
+  ⊸-refl-↑ : ⊸-↑ {Γ = Γ} {A = A} ⊸-refl ≡ ⊸-refl
+  ⊸-refl-↑ {Γ = ε} = refl
+  ⊸-refl-↑ {Γ = _ , _} = pair-eq (sym ⊸-wkn-decomp ×, refl)
+
+  ⊸-wkn-scomm : {r' : Δ ⊸ Θ} {r : Γ ⊸ Δ} → ⊸-↑ {A = A} r' ∙rr (⊸-wkn r) ≡ (⊸-wkn r') ∙rr r
+  ⊸-wkn-scomm {Γ = ε} = refl
+  ⊸-wkn-scomm {Γ = _ , _} {r' = r'} {r} = pair-eq (trans (trans (trans (trans
+    (cong (_∙rr_ (⊸-↑ r')) (⊸-wkn-decomp {r = ⊸-tail r}))
+    (∙rrr-assoc {r'' = ⊸-↑ r'}))
+    (cong (λ r' → r' ∙rr ⊸-tail r) (⊸-wkn-scomm {r = ⊸-refl})))
+    {!!})
+    {!!} ×,
+     cong (ren (⊸-head r)) (sym ⊸-wkn-decomp))
+
   ↑-∙rr : {r' : Δ ⊸ Θ} {r : Γ ⊸ Δ}
         → ⊸-↑ {A = A} r' ∙rr ⊸-↑ r ≡ ⊸-↑ (r' ∙rr r)
   ↑-∙rr {Γ = ε} = refl
