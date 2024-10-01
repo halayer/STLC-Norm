@@ -1,4 +1,4 @@
-{-# OPTIONS --allow-unsolved-metas #-}
+--{-# OPTIONS --allow-unsolved-metas #-}
 
 module Props where
 
@@ -202,13 +202,6 @@ module Props where
   --⊸-refl-∙rr-id {Γ = _ , _} =
   --  pair-eq (⊸-refl-∙rr-id ×, ⊸-refl-id)
 
-  ⊸-refl-∙sr-id : {σ : Γ ~> Δ} → σ ∙sr ⊸-refl ≡ σ
-  ⊸-refl-∙sr-id {Γ = ε} = refl
-  ⊸-refl-∙sr-id {Γ = _ , _} {σ = σ} = pair-eq (helper ×, refl) where
-    helper : {σ : (A , Γ) ~> Δ} → σ ∙sr ⊸-wkn' ≡ ~>-tail σ
-    helper {Γ = ε} = refl
-    helper {Γ = _ , _} = pair-eq ({!!} ×, refl)
-
   --⊸-wkn-⟨⟩-id : {r : Γ ⊸ Δ} {e : A ∈ Δ} → ⊸-⟨ e ⟩ ∙rr (⊸-wkn r) ≡ r
   --⊸-wkn-⟨⟩-id {Γ = ε} = refl
   --⊸-wkn-⟨⟩-id {Γ = _ , _} = pair-eq (⊸-wkn-⟨⟩-id ×, ⊸-refl-id)
@@ -325,7 +318,36 @@ module Props where
   ∙rss-assoc : {r : Θ ⊸ E} {ρ : Δ ~> Θ} {σ : Γ ~> Δ}
              → r ∙rs (ρ ∙ss σ) ≡ (r ∙rs ρ) ∙ss σ
   ∙rss-assoc {Γ = ε} = refl
-  ∙rss-assoc {Γ = _ , _} = pair-eq ({!!} ×, {!!})
+  ∙rss-assoc {Γ = _ , _} {r = r} {ρ} {σ} =
+    pair-eq (∙rss-assoc ×, helper {t = ~>-head σ}) where
+    helper' : {r : Δ ⊸ Θ} {σ : Γ ~> Δ} {e : A ∈ _}
+            → rename (sub e σ) r ≡ sub e (r ∙rs σ)
+    helper' {e = e0} = refl
+    helper' {e = eS e} = helper' {e = e}
+    helper : {r : Δ ⊸ Θ} {σ : Γ ~> Δ}
+           → rename (subst t σ) r ≡ subst t (r ∙rs σ)
+    helper'' : {r : Δ ⊸ Θ} {σ : Γ ~> Δ}
+             → ⊸-↑ {A = A} r ∙rs ~>-tail (~>-↑ σ) ≡ ~>-tail (~>-↑ (r ∙rs σ))
+    helper'' {Γ = ε} = refl
+    helper'' {Γ = _ , _} = pair-eq ({!!} ×, {!!})
+    helper {t = var e} = helper' {e = e}
+    helper {t = ⊤} = refl
+    helper {t = ⊥} = refl
+    helper {t = if t then u else v} = trans (trans
+      (cong (λ t → if t then _ else _) (helper {t = t}))
+      (cong (λ u → if _ then u else _) (helper {t = u})))
+      (cong (λ v → if _ then _ else v) (helper {t = v}))
+    helper {t = nat _} = refl
+    helper {t = rec t u v} = trans (trans
+      (cong (λ t → rec t _ _) (helper {t = t}))
+      (cong (λ u → rec _ u _) (helper {t = u})))
+      (cong (λ v → rec _ _ v) {!!})
+    helper {t = abs t} {r = r} {σ} = cong abs (trans
+      (helper {t = t} {r = ⊸-↑ r} {~>-↑ σ})
+      (cong (subst t) (pair-eq (helper'' ×, refl))))
+    helper {t = app t u} = trans
+      (cong (λ t → app t _) (helper {t = t}))
+      (cong (λ u → app _ u) (helper {t = u}))
 
   ~>-refl-∙ss-id : {σ : Γ ~> Δ} → ~>-refl ∙ss σ ≡ σ
   ~>-refl-∙ss-id {Γ = ε} = refl
@@ -342,8 +364,8 @@ module Props where
 
   ↑-∙ss : {ρ : Δ ~> Θ} {σ : Γ ~> Δ} → ~>-↑ {A = A} (ρ ∙ss σ) ≡ ~>-↑ ρ ∙ss ~>-↑ σ
   ↑-∙ss {ρ = ρ} {σ}  = pair-eq ((
-    ⊸-wkn' ∙rs (ρ ∙ss σ) ≡⟨ ∙rss-assoc ⟩
-    (⊸-wkn' ∙rs ρ) ∙ss σ ≡⟨ cong (λ ρ → ρ ∙ss σ) (sym helper) ⟩
+    ⊸-wkn' ∙rs (ρ ∙ss σ)                          ≡⟨ ∙rss-assoc ⟩
+    (⊸-wkn' ∙rs ρ) ∙ss σ                          ≡⟨ cong (λ ρ → ρ ∙ss σ) (sym helper) ⟩
     (((⊸-wkn' ∙rs ρ) ×, var e0) ∙sr ⊸-wkn') ∙ss σ ≡⟨ sym ∙srs-assoc ⟩
     ((⊸-wkn' ∙rs ρ) ×, var e0) ∙ss (⊸-wkn' ∙rs σ) ∎) ×,
     refl) where
@@ -352,6 +374,9 @@ module Props where
     helper' {Γ = ε} = refl
     helper' {Γ = _ , _} = pair-eq (helper' ×, refl)
     helper : {σ : Γ ~> Δ} {t : A ⊣ _} → (σ ×, t) ∙sr ⊸-wkn' ≡ σ
+    ⊸-refl-∙sr-id : {σ : Γ ~> Δ} → σ ∙sr ⊸-refl ≡ σ
+    ⊸-refl-∙sr-id {Γ = ε} = refl
+    ⊸-refl-∙sr-id {Γ = _ , _} {σ = σ} = pair-eq (helper ×, refl)
     helper = trans (helper' {r = ⊸-refl}) ⊸-refl-∙sr-id
 
   ∙ss-decomp : {ρ : Δ ~> Θ} {σ : Γ ~> Δ} → subst t (ρ ∙ss σ) ≡ subst (subst t σ) ρ
@@ -366,10 +391,13 @@ module Props where
     (cong (λ u → if _ then u else _) (∙ss-decomp {t = u})))
     (cong (λ v → if _ then _ else v) (∙ss-decomp {t = v}))
   ∙ss-decomp {t = nat _} = refl
-  ∙ss-decomp {t = rec t u v} = trans (trans
+  ∙ss-decomp {t = rec t u v} {ρ = ρ} {σ} = trans (trans
     (cong (λ t → rec t _ _) (∙ss-decomp {t = t}))
     (cong (λ u → rec _ u _) (∙ss-decomp {t = u})))
-    (cong (λ v → rec _ _ v) {!!})
+    (cong (λ v → rec _ _ v) (trans
+      (cong (subst v) (trans (cong ~>-↑ ↑-∙ss)
+                             (↑-∙ss {σ = ~>-↑ σ})))
+      (∙ss-decomp {t = v})))
   ∙ss-decomp {t = abs t} {ρ = ρ} {σ} =
     cong abs (trans (cong (subst t) ↑-∙ss)
                     (∙ss-decomp {t = t}))
