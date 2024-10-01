@@ -1,9 +1,11 @@
---{-# OPTIONS --allow-unsolved-metas #-}
+{-# OPTIONS --allow-unsolved-metas #-}
 
 module Props where
 
   open import Relation.Binary.PropositionalEquality using
     (_≡_; refl; sym; cong; trans)
+  open import Relation.Binary.PropositionalEquality.Properties using ()
+  open Relation.Binary.PropositionalEquality.Properties.≡-Reasoning
   open import Data.Product using (proj₁; proj₂) renaming (_,_ to _×,_)
   open import Data.Product.Properties renaming (×-≡,≡→≡ to pair-eq)
   open import Data.Unit using (tt)
@@ -140,176 +142,185 @@ module Props where
   subst (abs t) σ = abs (subst t (~>-↑ σ))
   subst (app t u) σ = app (subst t σ) (subst u σ)
 
-  ⊸-tail→~>-tail : {r : (A , Γ) ⊸ Δ}
-                 → ~>-tail (⊸→~> r) ≡ ⊸→~> (⊸-tail r)
-  ⊸-tail→~>-tail {Γ = Γ} {r = r} = refl
+  --⊸-tail→~>-tail : {r : (A , Γ) ⊸ Δ}
+  --               → ~>-tail (⊸→~> r) ≡ ⊸→~> (⊸-tail r)
+  --⊸-tail→~>-tail {Γ = Γ} {r = r} = refl
 
-  ∙rs→∙rr : {r' : Δ ⊸ Θ} {r : Γ ⊸ Δ}
-          → r' ∙rs (⊸→~> r) ≡ ⊸→~> (r' ∙rr r)
-  ∙rs→∙rr {Γ = ε} = refl
-  ∙rs→∙rr {Γ = _ , _} {r' = r'} {r} = pair-eq
-    (trans (cong (_∙rs_ r') (⊸-tail→~>-tail {r = r})) ∙rs→∙rr ×,
-     refl)
+  --∙rs→∙rr : {r' : Δ ⊸ Θ} {r : Γ ⊸ Δ}
+  --        → r' ∙rs (⊸→~> r) ≡ ⊸→~> (r' ∙rr r)
+  --∙rs→∙rr {Γ = ε} = refl
+  --∙rs→∙rr {Γ = _ , _} {r' = r'} {r} = pair-eq
+  --  (trans (cong (_∙rs_ r') (⊸-tail→~>-tail {r = r})) ∙rs→∙rr ×,
+  --   refl)
 
-  ~>-↑-⊸-↑ : {r : Γ ⊸ Δ} → ~>-↑ {A = A} (⊸→~> r) ≡ ⊸→~> (⊸-↑ r)
-  ~>-↑-⊸-↑ {Γ = ε} = refl
-  ~>-↑-⊸-↑ {Γ = _ , _} {r = r} = pair-eq (∙rs→∙rr {r = r} ×, refl)
+  --~>-↑-⊸-↑ : {r : Γ ⊸ Δ} → ~>-↑ {A = A} (⊸→~> r) ≡ ⊸→~> (⊸-↑ r)
+  --~>-↑-⊸-↑ {Γ = ε} = refl
+  --~>-↑-⊸-↑ {Γ = _ , _} {r = r} = pair-eq (∙rs→∙rr {r = r} ×, refl)
 
-  ⊸→~>-rename-subst : {r : Γ ⊸ Δ} {t : A ⊣ Γ}
-                    → rename t r ≡ subst t (⊸→~> r)
-  ⊸→~>-rename-subst {t = var e} = sym (⊸→~>-≡ {e = e} refl)
-  ⊸→~>-rename-subst {t = ⊤} = refl
-  ⊸→~>-rename-subst {t = ⊥} = refl
-  ⊸→~>-rename-subst {t = if t then u else v} = trans (trans
-    (cong (λ t → if t then _ else _) ⊸→~>-rename-subst)
-    (cong (λ u → if _ then u else _) ⊸→~>-rename-subst))
-    (cong (λ v → if _ then _ else v) ⊸→~>-rename-subst)
-  ⊸→~>-rename-subst {t = nat n} = refl
-  ⊸→~>-rename-subst {t = rec t u v} = trans (trans
-    (cong (λ t → rec t _ _) ⊸→~>-rename-subst)
-    (cong (λ u → rec _ u _) ⊸→~>-rename-subst))
-    (cong (λ v → rec _ _ v) (trans
-      ⊸→~>-rename-subst
-      (cong (subst v)
-            (trans (sym (~>-↑-⊸-↑ {r = ⊸-↑ _}))
-                   (cong ~>-↑ (sym ~>-↑-⊸-↑))))))
-  ⊸→~>-rename-subst {r = r} {t = abs t} = cong
-    abs (trans ⊸→~>-rename-subst (cong (subst t) (sym ~>-↑-⊸-↑)))
-  ⊸→~>-rename-subst {t = app t u} = trans
-    (cong (λ t → app t _) ⊸→~>-rename-subst)
-    (cong (λ u → app _ u) ⊸→~>-rename-subst)
+  --⊸→~>-rename-subst : {r : Γ ⊸ Δ} {t : A ⊣ Γ}
+  --                  → rename t r ≡ subst t (⊸→~> r)
+  --⊸→~>-rename-subst {t = var e} = sym (⊸→~>-≡ {e = e} refl)
+  --⊸→~>-rename-subst {t = ⊤} = refl
+  --⊸→~>-rename-subst {t = ⊥} = refl
+  --⊸→~>-rename-subst {t = if t then u else v} = trans (trans
+  --  (cong (λ t → if t then _ else _) ⊸→~>-rename-subst)
+  --  (cong (λ u → if _ then u else _) ⊸→~>-rename-subst))
+  --  (cong (λ v → if _ then _ else v) ⊸→~>-rename-subst)
+  --⊸→~>-rename-subst {t = nat n} = refl
+  --⊸→~>-rename-subst {t = rec t u v} = trans (trans
+  --  (cong (λ t → rec t _ _) ⊸→~>-rename-subst)
+  --  (cong (λ u → rec _ u _) ⊸→~>-rename-subst))
+  --  (cong (λ v → rec _ _ v) (trans
+  --    ⊸→~>-rename-subst
+  --    (cong (subst v)
+  --          (trans (sym (~>-↑-⊸-↑ {r = ⊸-↑ _}))
+  --                 (cong ~>-↑ (sym ~>-↑-⊸-↑))))))
+  --⊸→~>-rename-subst {r = r} {t = abs t} = cong
+  --  abs (trans ⊸→~>-rename-subst (cong (subst t) (sym ~>-↑-⊸-↑)))
+  --⊸→~>-rename-subst {t = app t u} = trans
+  --  (cong (λ t → app t _) ⊸→~>-rename-subst)
+  --  (cong (λ u → app _ u) ⊸→~>-rename-subst)
 
-  ~>-wkn-decomp : {σ : Γ ~> Δ} → ~>-wkn {A = A} σ ≡ ~>-wkn' ∙ss σ
-  ~>-wkn-decomp {Γ = ε} = refl
-  ~>-wkn-decomp {Γ = _ , _} {σ = σ} = pair-eq
-    (~>-wkn-decomp ×, ⊸→~>-rename-subst)
+  --~>-wkn-decomp : {σ : Γ ~> Δ} → ~>-wkn {A = A} σ ≡ ~>-wkn' ∙ss σ
+  --~>-wkn-decomp {Γ = ε} = refl
+  --~>-wkn-decomp {Γ = _ , _} {σ = σ} = pair-eq
+  --  (~>-wkn-decomp ×, ⊸→~>-rename-subst)
 
-  ∙rrr-assoc : {r'' : Θ ⊸ E} {r' : Δ ⊸ Θ} {r : Γ ⊸ Δ}
-             → r'' ∙rr (r' ∙rr r) ≡ (r'' ∙rr r') ∙rr r
-  ∙rrr-assoc {Γ = ε} = refl
-  ∙rrr-assoc {Γ = _ , _} {r'' = r''} {r'} {r} = pair-eq
-    (∙rrr-assoc ×,
-     ren-decomp {r' = r''} {r'} {⊸-head r}) where
-    ren-decomp : {Γ : Context} {r' : Δ ⊸ Θ} {r : Γ ⊸ Δ} {e : A ∈ Γ}
-               → ren (ren e r) r' ≡ ren e (r' ∙rr r)
-    ren-decomp {e = e0} = refl
-    ren-decomp {e = eS e} = ren-decomp {e = e}
+  --∙rrr-assoc : {r'' : Θ ⊸ E} {r' : Δ ⊸ Θ} {r : Γ ⊸ Δ}
+  --           → r'' ∙rr (r' ∙rr r) ≡ (r'' ∙rr r') ∙rr r
+  --∙rrr-assoc {Γ = ε} = refl
+  --∙rrr-assoc {Γ = _ , _} {r'' = r''} {r'} {r} = pair-eq
+  --  (∙rrr-assoc ×,
+  --   ren-decomp {r' = r''} {r'} {⊸-head r}) where
+  --  ren-decomp : {Γ : Context} {r' : Δ ⊸ Θ} {r : Γ ⊸ Δ} {e : A ∈ Γ}
+  --             → ren (ren e r) r' ≡ ren e (r' ∙rr r)
+  --  ren-decomp {e = e0} = refl
+  --  ren-decomp {e = eS e} = ren-decomp {e = e}
 
-  ⊸-refl-∙rr-id : {r : Γ ⊸ Δ} → ⊸-refl ∙rr r ≡ r
-  ⊸-refl-∙rr-id {Γ = ε} = refl
-  ⊸-refl-∙rr-id {Γ = _ , _} {r = r@(r' ×, e)} =
-    pair-eq (⊸-refl-∙rr-id ×, ⊸-refl-id)
+  --⊸-refl-∙rr-id : {r : Γ ⊸ Δ} → ⊸-refl ∙rr r ≡ r
+  --⊸-refl-∙rr-id {Γ = ε} = refl
+  --⊸-refl-∙rr-id {Γ = _ , _} =
+  --  pair-eq (⊸-refl-∙rr-id ×, ⊸-refl-id)
 
-  ⊸-wkn-⟨⟩-id : {r : Γ ⊸ Δ} {e : A ∈ Δ} → ⊸-⟨ e ⟩ ∙rr (⊸-wkn r) ≡ r
-  ⊸-wkn-⟨⟩-id {Γ = ε} = refl
-  ⊸-wkn-⟨⟩-id {Γ = _ , _} = pair-eq (⊸-wkn-⟨⟩-id ×, ⊸-refl-id)
-
-  ⊸-extend-⟨⟩ : {r : Γ ⊸ Δ} {e : A ∈ Δ}
-              → (r ×, e) ≡ ⊸-⟨ e ⟩ ∙rr ⊸-↑ r
-  ⊸-extend-⟨⟩ {Γ = ε} = refl
-  ⊸-extend-⟨⟩ {Γ = _ , _} {r = r} = pair-eq (sym (trans (trans
-    (∙rrr-assoc {r'' = ⊸-⟨ _ ⟩} {⊸-wkn'} {r})
-    (cong (λ r' → r' ∙rr r) (⊸-wkn-⟨⟩-id {r = ⊸-refl})))
-    ⊸-refl-∙rr-id) ×,
-    refl)
-
-  ⊸-refl-↑ : ⊸-↑ {Γ = Γ} {A = A} ⊸-refl ≡ ⊸-refl
-  ⊸-refl-↑ {Γ = ε} = refl
-  ⊸-refl-↑ {Γ = _ , _} = pair-eq (sym ⊸-wkn-decomp ×, refl)
-
-  ⊸-wkn-scomm : {r' : Δ ⊸ Θ} {r : Γ ⊸ Δ} → ⊸-↑ {A = A} r' ∙rr (⊸-wkn r) ≡ (⊸-wkn r') ∙rr r
-  ⊸-wkn-scomm {Γ = ε} = refl
-  ⊸-wkn-scomm {Γ = _ , _} {r' = r'} {r} = pair-eq (trans (trans (trans (trans
-    (cong (_∙rr_ (⊸-↑ r')) (⊸-wkn-decomp {r = ⊸-tail r}))
-    (∙rrr-assoc {r'' = ⊸-↑ r'}))
-    (cong (λ r' → r' ∙rr ⊸-tail r) (⊸-wkn-scomm {r = ⊸-refl})))
-    {!!})
-    {!!} ×,
-     cong (ren (⊸-head r)) (sym ⊸-wkn-decomp))
-
-  ↑-∙rr : {r' : Δ ⊸ Θ} {r : Γ ⊸ Δ}
-        → ⊸-↑ {A = A} r' ∙rr ⊸-↑ r ≡ ⊸-↑ (r' ∙rr r)
-  ↑-∙rr {Γ = ε} = refl
-  ↑-∙rr {Γ = _ , _} {r = r} = pair-eq
-    (trans (trans (∙rrr-assoc {r = r})
-                  (cong (λ r' → r' ∙rr r) helper))
-           (sym (∙rrr-assoc {r = r})) ×,
-     refl) where
-    helper' : {Γ : Context} {r' : Δ ⊸ Θ} {r : Γ ⊸ Δ}
-            → ⊸-↑ {A = A} r' ∙rr (⊸-wkn r) ≡ (⊸-wkn' ∙rr r') ∙rr r
-    helper' {Γ = ε} = refl
-    helper' {Γ = _ , _} {r' = r'} {r} = pair-eq (trans (trans (trans
-      (cong (_∙rr_ (⊸-↑ r')) ⊸-wkn-decomp)
-      (∙rrr-assoc {r'' = ⊸-↑ r'} {⊸-wkn'} {⊸-tail r}))
-      (cong (λ r' → r' ∙rr (⊸-tail r)) (helper' {r' = r'} {⊸-refl})))
-      {!!} ×,
-      refl)
-    helper : {Γ : Context} {r : Γ ⊸ Δ}
-           → ⊸-↑ {A = A} r ∙rr ⊸-wkn' ≡ ⊸-wkn' ∙rr r
+  ⊸-refl-∙sr-id : {σ : Γ ~> Δ} → σ ∙sr ⊸-refl ≡ σ
+  ⊸-refl-∙sr-id {Γ = ε} = refl
+  ⊸-refl-∙sr-id {Γ = _ , _} {σ = σ} = pair-eq (helper ×, refl) where
+    helper : {σ : (A , Γ) ~> Δ} → σ ∙sr ⊸-wkn' ≡ ~>-tail σ
     helper {Γ = ε} = refl
-    helper {Γ = _ , _} {r@(r' ×, e)} =
-      pair-eq ({!!} ×, refl)
+    helper {Γ = _ , _} = pair-eq ({!!} ×, refl)
 
-  ∙rr-decomp : {r' : Δ ⊸ Θ} {r : Γ ⊸ Δ}
-             → rename (rename t r) r' ≡ rename t (r' ∙rr r)
-  ∙rr-decomp {t = var e} = cong var (helper {e = e}) where
-    helper : ∀ {e} {r' : Δ ⊸ Θ} {r : Γ ⊸ Δ}
-           → ren {A = A} (ren e r) r' ≡ ren e (r' ∙rr r)
-    helper {e = e0} = refl
-    helper {e = eS e} = helper {e = e}
-  ∙rr-decomp {t = ⊤} = refl
-  ∙rr-decomp {t = ⊥} = refl
-  ∙rr-decomp {t = if t then u else v} = trans (trans
-    (cong (λ t → if t then _ else _) (∙rr-decomp {t = t}))
-    (cong (λ u → if _ then u else _) (∙rr-decomp {t = u})))
-    (cong (λ v → if _ then _ else v) (∙rr-decomp {t = v}))
-  ∙rr-decomp {t = nat _} = refl
-  ∙rr-decomp {t = rec t u v} {r = r} = trans (trans
-    (cong (λ t → rec t _ _) (∙rr-decomp {t = t}))
-    (cong (λ u → rec _ u _) (∙rr-decomp {t = u})))
-    (cong (λ v → rec _ _ v)
-          (trans (∙rr-decomp {t = v})
-                 (cong (rename _) (trans (↑-∙rr {r = ⊸-↑ r}) (cong ⊸-↑ ↑-∙rr)))))
-  ∙rr-decomp {t = abs t} =
-    cong abs (trans ∙rr-decomp (cong (rename _) ↑-∙rr))
-  ∙rr-decomp {t = app t u} = trans
-    (cong (λ t → app t _) (∙rr-decomp {t = t}))
-    (cong (λ u → app _ u) (∙rr-decomp {t = u}))
+  --⊸-wkn-⟨⟩-id : {r : Γ ⊸ Δ} {e : A ∈ Δ} → ⊸-⟨ e ⟩ ∙rr (⊸-wkn r) ≡ r
+  --⊸-wkn-⟨⟩-id {Γ = ε} = refl
+  --⊸-wkn-⟨⟩-id {Γ = _ , _} = pair-eq (⊸-wkn-⟨⟩-id ×, ⊸-refl-id)
 
-  ↑-∙rs : {r : Δ ⊸ Θ} {σ : Γ ~> Δ}
-        → ⊸-↑ {A = A} r ∙rs ~>-↑ σ ≡ ~>-↑ (r ∙rs σ)
-  ↑-∙rs {Γ = ε} = refl
-  ↑-∙rs {Γ = _ , _} {r = r} {σ} = pair-eq
-    ({!!} ×,
-     refl)
+  --⊸-extend-⟨⟩ : {r : Γ ⊸ Δ} {e : A ∈ Δ}
+  --            → (r ×, e) ≡ ⊸-⟨ e ⟩ ∙rr ⊸-↑ r
+  --⊸-extend-⟨⟩ {Γ = ε} = refl
+  --⊸-extend-⟨⟩ {Γ = _ , _} {r = r} = pair-eq (sym (trans (trans
+  --  (∙rrr-assoc {r'' = ⊸-⟨ _ ⟩} {⊸-wkn'} {r})
+  --  (cong (λ r' → r' ∙rr r) (⊸-wkn-⟨⟩-id {r = ⊸-refl})))
+  --  ⊸-refl-∙rr-id) ×,
+  --  refl)
 
-  ∙rs-decomp : {r : Δ ⊸ Θ} {σ : Γ ~> Δ}
-             → rename (subst t σ) r ≡ subst t (r ∙rs σ)
-  ∙rs-decomp {t = var e} {r = r} = helper {e = e} where
-    helper : ∀ {e} {r : Δ ⊸ Θ} {σ : Γ ~> Δ}
-           → rename {A = A} (sub e σ) r ≡ sub e (r ∙rs σ)
-    helper {e = e0} = refl
-    helper {e = eS e} = helper {e = e}
-  ∙rs-decomp {t = ⊤} = refl
-  ∙rs-decomp {t = ⊥} = refl
-  ∙rs-decomp {t = if t then u else v} = trans (trans
-    (cong (λ t → if t then _ else _) (∙rs-decomp {t = t}))
-    (cong (λ u → if _ then u else _) (∙rs-decomp {t = u})))
-    (cong (λ v → if _ then _ else v) (∙rs-decomp {t = v}))
-  ∙rs-decomp {t = nat _} = refl
-  ∙rs-decomp {t = rec t u v} {r = r} {σ} = trans (trans
-    (cong (λ t → rec t _ _) (∙rs-decomp {t = t}))
-    (cong (λ u → rec _ u _) (∙rs-decomp {t = u})))
-    (cong (λ v → rec _ _ v)
-          (trans (∙rs-decomp {t = v})
-                 (cong (subst v)
-                       (trans (↑-∙rs {r = ⊸-↑ r} {~>-↑ σ})
-                              (cong ~>-↑ ↑-∙rs)))))
-  ∙rs-decomp {t = abs t} {r = r} {σ} =
-    cong abs (trans (∙rs-decomp {t = t}) (cong (subst t) ↑-∙rs))
-  ∙rs-decomp {t = app t u} = trans
-    (cong (λ t → app t _) (∙rs-decomp {t = t}))
-    (cong (λ u → app _ u) (∙rs-decomp {t = u}))
+  --⊸-refl-↑ : ⊸-↑ {Γ = Γ} {A = A} ⊸-refl ≡ ⊸-refl
+  --⊸-refl-↑ {Γ = ε} = refl
+  --⊸-refl-↑ {Γ = _ , _} = pair-eq (sym ⊸-wkn-decomp ×, refl)
+
+  --↑-∙rr : {r' : Δ ⊸ Θ} {r : Γ ⊸ Δ}
+  --      → ⊸-↑ {A = A} r' ∙rr ⊸-↑ r ≡ ⊸-↑ (r' ∙rr r)
+  --↑-∙rr {Γ = ε} = refl
+  --↑-∙rr {Γ = _ , _} {r = r} = pair-eq
+  --  (trans (trans (∙rrr-assoc {r = r})
+  --                (cong (λ r' → r' ∙rr r) (trans helper ⊸-wkn-decomp)))
+  --         (sym (∙rrr-assoc {r = r})) ×,
+  --   refl) where
+  --  helper' : {Γ : Context} {r : (A , Γ) ⊸ Δ}
+  --          → r ∙rr ⊸-wkn' ≡ ⊸-tail r
+  --  helper' {Γ = ε} = refl
+  --  --helper' {Γ = _ , ε} = pair-eq (refl ×, refl)
+  --  --helper' {Γ = _ , (_ , ε)} = pair-eq ({!!} ×, refl)
+  --  --helper' {Γ = _ , (_ , (_ , ε))} = pair-eq (refl ×, refl)
+  --  --helper' {Γ = _ , (_ , (_ , (_ , ε)))} = refl
+  --  --helper' {Γ = _ , (_ , (_ , (_ , (_ , ε))))} = refl
+  --  helper' {Γ = _ , _} {r = r@(r' ×, e)} = pair-eq
+  --    ({!!} ×,
+  --     refl)
+  --  helper : {Γ : Context} {r : Γ ⊸ Δ}
+  --         → ⊸-↑ {A = A} r ∙rr ⊸-wkn' ≡ ⊸-wkn r
+  --  helper {Γ = ε} = refl
+  --  helper {Γ = _ , ε} {r@(r' ×, e)} = pair-eq
+  --    (refl ×, 
+  --     trans (⊸-wkn-prop {e = e}) (cong eS ⊸-refl-id))
+  --  helper {Γ = _ , (_ , ε)} {r = r@(r' ×, e)} = pair-eq
+  --    (helper {r = r'} ×,
+  --     trans (⊸-wkn-prop {e = e}) (cong eS ⊸-refl-id))
+  --  helper {Γ = _ , (_ , (_ , ε))} {r = r@(r' ×, e)} = pair-eq
+  --    (helper {r = r'} ×,
+  --     trans (⊸-wkn-prop {e = e}) (cong eS ⊸-refl-id))
+  --  helper {Γ = _ , _} {r = r@(r' ×, e)} = pair-eq (
+  --    {!!} ×,
+  --    trans (⊸-wkn-prop {e = e}) (cong eS ⊸-refl-id))
+
+  --∙rr-decomp : {r' : Δ ⊸ Θ} {r : Γ ⊸ Δ}
+  --           → rename (rename t r) r' ≡ rename t (r' ∙rr r)
+  --∙rr-decomp {t = var e} = cong var (helper {e = e}) where
+  --  helper : ∀ {e} {r' : Δ ⊸ Θ} {r : Γ ⊸ Δ}
+  --         → ren {A = A} (ren e r) r' ≡ ren e (r' ∙rr r)
+  --  helper {e = e0} = refl
+  --  helper {e = eS e} = helper {e = e}
+  --∙rr-decomp {t = ⊤} = refl
+  --∙rr-decomp {t = ⊥} = refl
+  --∙rr-decomp {t = if t then u else v} = trans (trans
+  --  (cong (λ t → if t then _ else _) (∙rr-decomp {t = t}))
+  --  (cong (λ u → if _ then u else _) (∙rr-decomp {t = u})))
+  --  (cong (λ v → if _ then _ else v) (∙rr-decomp {t = v}))
+  --∙rr-decomp {t = nat _} = refl
+  --∙rr-decomp {t = rec t u v} {r = r} = trans (trans
+  --  (cong (λ t → rec t _ _) (∙rr-decomp {t = t}))
+  --  (cong (λ u → rec _ u _) (∙rr-decomp {t = u})))
+  --  (cong (λ v → rec _ _ v)
+  --        (trans (∙rr-decomp {t = v})
+  --               (cong (rename _) (trans (↑-∙rr {r = ⊸-↑ r}) (cong ⊸-↑ ↑-∙rr)))))
+  --∙rr-decomp {t = abs t} =
+  --  cong abs (trans ∙rr-decomp (cong (rename _) ↑-∙rr))
+  --∙rr-decomp {t = app t u} = trans
+  --  (cong (λ t → app t _) (∙rr-decomp {t = t}))
+  --  (cong (λ u → app _ u) (∙rr-decomp {t = u}))
+  --
+  --↑-∙rs : {r : Δ ⊸ Θ} {σ : Γ ~> Δ}
+  --      → ⊸-↑ {A = A} r ∙rs ~>-↑ σ ≡ ~>-↑ (r ∙rs σ)
+  --↑-∙rs {Γ = ε} = refl
+  --↑-∙rs {Γ = _ , _} {r = r} {σ} = pair-eq
+  --  ({!!} ×,
+  --   refl)
+
+  --∙rs-decomp : {r : Δ ⊸ Θ} {σ : Γ ~> Δ}
+  --           → rename (subst t σ) r ≡ subst t (r ∙rs σ)
+  --∙rs-decomp {t = var e} {r = r} = helper {e = e} where
+  --  helper : ∀ {e} {r : Δ ⊸ Θ} {σ : Γ ~> Δ}
+  --         → rename {A = A} (sub e σ) r ≡ sub e (r ∙rs σ)
+  --  helper {e = e0} = refl
+  --  helper {e = eS e} = helper {e = e}
+  --∙rs-decomp {t = ⊤} = refl
+  --∙rs-decomp {t = ⊥} = refl
+  --∙rs-decomp {t = if t then u else v} = trans (trans
+  --  (cong (λ t → if t then _ else _) (∙rs-decomp {t = t}))
+  --  (cong (λ u → if _ then u else _) (∙rs-decomp {t = u})))
+  --  (cong (λ v → if _ then _ else v) (∙rs-decomp {t = v}))
+  --∙rs-decomp {t = nat _} = refl
+  --∙rs-decomp {t = rec t u v} {r = r} {σ} = trans (trans
+  --  (cong (λ t → rec t _ _) (∙rs-decomp {t = t}))
+  --  (cong (λ u → rec _ u _) (∙rs-decomp {t = u})))
+  --  (cong (λ v → rec _ _ v)
+  --        (trans (∙rs-decomp {t = v})
+  --               (cong (subst v)
+  --                     (trans (↑-∙rs {r = ⊸-↑ r} {~>-↑ σ})
+  --                            (cong ~>-↑ ↑-∙rs)))))
+  --∙rs-decomp {t = abs t} {r = r} {σ} =
+  --  cong abs (trans (∙rs-decomp {t = t}) (cong (subst t) ↑-∙rs))
+  --∙rs-decomp {t = app t u} = trans
+  --  (cong (λ t → app t _) (∙rs-decomp {t = t}))
+  --  (cong (λ u → app _ u) (∙rs-decomp {t = u}))
 
   ∙rss-assoc : {r : Θ ⊸ E} {ρ : Δ ~> Θ} {σ : Γ ~> Δ}
              → r ∙rs (ρ ∙ss σ) ≡ (r ∙rs ρ) ∙ss σ
@@ -325,9 +336,23 @@ module Props where
   ∙srs-assoc {Γ = ε} = refl
   ∙srs-assoc {Γ = _ , _} = pair-eq ({!!} ×, {!!})
 
+  test : {r : Δ ⊸ Θ} {r' : Γ ⊸ Δ} {e : A ∈ _} → (r ×, e) ∙rr (⊸-wkn r') ≡ r ∙rr r'
+  test {Γ = ε} = refl
+  test {Γ = _ , _} = pair-eq (test ×, refl)
+
   ↑-∙ss : {ρ : Δ ~> Θ} {σ : Γ ~> Δ} → ~>-↑ {A = A} (ρ ∙ss σ) ≡ ~>-↑ ρ ∙ss ~>-↑ σ
-  ↑-∙ss {Γ = ε} = refl
-  ↑-∙ss {Γ = _ , _} = pair-eq ({!!} ×, refl)
+  ↑-∙ss {ρ = ρ} {σ}  = pair-eq ((
+    ⊸-wkn' ∙rs (ρ ∙ss σ) ≡⟨ ∙rss-assoc ⟩
+    (⊸-wkn' ∙rs ρ) ∙ss σ ≡⟨ cong (λ ρ → ρ ∙ss σ) (sym helper) ⟩
+    (((⊸-wkn' ∙rs ρ) ×, var e0) ∙sr ⊸-wkn') ∙ss σ ≡⟨ sym ∙srs-assoc ⟩
+    ((⊸-wkn' ∙rs ρ) ×, var e0) ∙ss (⊸-wkn' ∙rs σ) ∎) ×,
+    refl) where
+    helper' : {σ : Δ ~> Θ} {r : Γ ⊸ Δ} {t : A ⊣ _}
+            → (σ ×, t) ∙sr (⊸-wkn r) ≡ σ ∙sr r
+    helper' {Γ = ε} = refl
+    helper' {Γ = _ , _} = pair-eq (helper' ×, refl)
+    helper : {σ : Γ ~> Δ} {t : A ⊣ _} → (σ ×, t) ∙sr ⊸-wkn' ≡ σ
+    helper = trans (helper' {r = ⊸-refl}) ⊸-refl-∙sr-id
 
   ∙ss-decomp : {ρ : Δ ~> Θ} {σ : Γ ~> Δ} → subst t (ρ ∙ss σ) ≡ subst (subst t σ) ρ
   ∙ss-decomp {t = var e} = helper {e = e} where
@@ -346,7 +371,8 @@ module Props where
     (cong (λ u → rec _ u _) (∙ss-decomp {t = u})))
     (cong (λ v → rec _ _ v) {!!})
   ∙ss-decomp {t = abs t} {ρ = ρ} {σ} =
-    cong abs (trans (cong (subst t) ↑-∙ss) (∙ss-decomp {t = t}))
+    cong abs (trans (cong (subst t) ↑-∙ss)
+                    (∙ss-decomp {t = t}))
   ∙ss-decomp {t = app t u} = trans
     (cong (λ t → app t _) (∙ss-decomp {t = t}))
     (cong (λ u → app _ u) (∙ss-decomp {t = u}))
