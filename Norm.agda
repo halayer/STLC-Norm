@@ -1,3 +1,5 @@
+--{-# OPTIONS --allow-unsolved-metas #-}
+
 module Norm where
 
   -- https://continuation.passing.style/blog/Strong_Normalization_of_STLC.html
@@ -17,7 +19,8 @@ module Norm where
   open import Trans {Typ} hiding (_~>_)
   open import Props using
     (⊸-wkn'; _~>_; ~>-refl; ~>-wkn'; ~>-↑; ⟨_⟩; _∙ss_;
-     subst; ~>-refl-∙ss-id; ∙ss-decomp; ∙srs-assoc)
+     subst; subst-id; ~>-refl-∙ss-id; ∙ss-decomp;
+     ∙srs-assoc)
 
   private variable
     A B : Typ
@@ -221,18 +224,6 @@ module Norm where
   sn→⇓ : {t : A ⊣ ε} → SN t → t ⇓
   sn→⇓ (_ ×, n) = n
 
-  -- Theorem 1/2
-  -- strong-normalization : (t : A ⊣ Γ) → SN t
-  -- strong-normalization (var e) = var-sn
-  -- strong-normalization ⊤ = ⊤-sn
-  -- strong-normalization ⊥ = ⊥-sn
-  -- strong-normalization (if t then u else v) = {!!}
-  -- strong-normalization zero = zero-sn
-  -- strong-normalization (succ t) = succ-sn (strong-normalization t)
-  -- strong-normalization (rec t u v) = {!!}
-  -- strong-normalization (abs t) = abs-sn
-  -- strong-normalization (app t u) = {!!} -- Problem
-
   coe : ∀ {l} {A B : Set l} → A ≡ B → A → B
   coe refl a = a
 
@@ -262,6 +253,22 @@ module Norm where
     = if-sn' (⊥ ×, false ×, j) sn'u sn'v ×,
       vv ×, vvv ×, ((lifts if j ++ step (here if-⊥) done) ++ jv)
 
+  app-sn : SN t → SN u → SN (app t u)
+
+  rec-sn : {σ : Γ ~> ε} {t : ℕ ⊣ ε} {u : A ⊣ ε}
+         → SNs σ → SN t → SN u → SN (rec t u (subst v (~>-↑ (~>-↑ σ))))
+  rec-sn' : {σ : Γ ~> ε} {u : A ⊣ ε} {v : A ⊣ (A , ℕ , Γ)}
+          → SNs σ → t ⇓ → SN' u
+          → SN' (rec t u (subst v (~>-↑ (~>-↑ σ))))
+  rec-sn' {A = 𝟚} _ _ _ = tt
+  rec-sn' {A = ℕ} _ _ _ = tt
+  rec-sn' {A = A ⇒ B} _ (nat 0 ×, _ ×, j) sn'u u' snu' =
+    sn-pres'* ((lifts (λ t → ap (rec t)) j) ++ step (ap (here ℕ-β)) done)
+              (sn'u u' snu')
+  rec-sn' {A = A ⇒ B} {σ = σ} {v = v} sns (nat (suc n) ×, _ ×, j) sn'u u' snu' =
+    sn-pres'* ((lifts (λ t → ap (rec t)) j) ++ step (ap (here ℕ-β')) done)
+              {!!}
+
   lemma : {σ : Γ ~> ε} → subst t (σ ×, u) ≡ subst (subst t (~>-↑ σ)) ⟨ u ⟩
   lemma {t = t} {σ = σ} = trans
     (cong (subst t) helper)
@@ -274,21 +281,30 @@ module Norm where
       ~>-refl-∙ss-id) ×,
       refl)
 
-  rec-sn : {σ : Γ ~> ε} {t : ℕ ⊣ ε} {u : A ⊣ ε}
-         → SNs σ → SN t → SN u → SN (rec t u (subst v (~>-↑ (~>-↑ σ))))
+  rec-sn {v = v} {σ = σ} {t} {u}
+    sn
+    (_ ×, nat 0 ×, t⇓@(_ ×, j))
+    snu@(_ ×, uv ×, uvv ×, ju) =
+    rec-sn' {σ = σ} {v = v} sn (nat 0 ×, t⇓) (proj₁ snu) ×,
+    uv ×, uvv ×, (lifts rec j ++ step (here ℕ-β) done) ++ ju
+  rec-sn {v = v} {σ = σ} {t} {u}
+    sn
+    (_ ×, nat (suc n) ×, t⇓@(_ ×, j))
+    snu@(_ ×, uv ×, uvv ×, ju) =
+    rec-sn' {σ = σ} {v = v} sn (nat (suc _) ×, t⇓) (proj₁ snu) ×,
+    uv ×, uvv ×, (lifts rec j ++ step (here ℕ-β') done) ++ {!!}
 
   abs-sn : {σ : Γ ~> ε} {t : B ⊣ (A , Γ)} → SNs σ → SN (abs (subst t (~>-↑ σ)))
-  abs-sn {σ = σ} {t} sn
-    = (λ u →
-         λ {(sn'u ×, uv ×, uvv ×, j) →
-              let snuv = sn-pres* j (sn'u ×, uv ×, uvv ×, j)
-                  IH = fund-thm t (sn ×, snuv) in
-              sn-pres'*
-                (lifts ap' j)
-                (sn-pres' (here (β uvv)) (transp {B = SN} (lemma {t = t}) IH))}) ×,
-              abs (subst t (~>-↑ σ)) ×, abs ×, done
+  abs-sn {σ = σ} {t} sn =
+    (λ u →
+       λ {(sn'u ×, uv ×, uvv ×, j) →
+            let snuv = sn-pres* j (sn'u ×, uv ×, uvv ×, j)
+                IH = fund-thm t (sn ×, snuv) in
+            sn-pres'*
+              (lifts ap' j)
+              (sn-pres' (here (β uvv)) (transp {B = SN} (lemma {t = t}) IH))}) ×,
+            abs (subst t (~>-↑ σ)) ×, abs ×, done
 
-  app-sn : SN t → SN u → SN (app t u)
   app-sn {u = u} (t ×, _) snu = t u snu
 
   fund-thm (var e0) (_ ×, sn) = sn
@@ -304,4 +320,4 @@ module Norm where
   fund-thm (app t u) sn = app-sn (fund-thm t sn) (fund-thm u sn)
 
   eval : {t : A ⊣ ε} → t ⇓
-  eval {t = t} = sn→⇓ (coe (cong SN {!!}) (fund-thm t tt))
+  eval {t = t} = sn→⇓ (coe (cong SN subst-id) (fund-thm t tt))
