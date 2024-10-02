@@ -63,7 +63,7 @@ module Props where
   ⊸-⟨_⟩ e = ⊸-refl ×, e
 
   rename : A ⊣ Γ → Γ ⊸ Δ → A ⊣ Δ
-  rename (var {A} e) r = var (ren e r)
+  rename (var e) r = var (ren e r)
   rename ⊤ _ = ⊤
   rename ⊥ _ = ⊥
   rename (if t then u else v) r = if rename t r then rename u r else rename v r
@@ -186,21 +186,16 @@ module Props where
   --~>-wkn-decomp {Γ = _ , _} {σ = σ} = pair-eq
   --  (~>-wkn-decomp ×, ⊸→~>-rename-subst)
 
-  --∙rrr-assoc : {r'' : Θ ⊸ E} {r' : Δ ⊸ Θ} {r : Γ ⊸ Δ}
-  --           → r'' ∙rr (r' ∙rr r) ≡ (r'' ∙rr r') ∙rr r
-  --∙rrr-assoc {Γ = ε} = refl
-  --∙rrr-assoc {Γ = _ , _} {r'' = r''} {r'} {r} = pair-eq
-  --  (∙rrr-assoc ×,
-  --   ren-decomp {r' = r''} {r'} {⊸-head r}) where
-  --  ren-decomp : {Γ : Context} {r' : Δ ⊸ Θ} {r : Γ ⊸ Δ} {e : A ∈ Γ}
-  --             → ren (ren e r) r' ≡ ren e (r' ∙rr r)
-  --  ren-decomp {e = e0} = refl
-  --  ren-decomp {e = eS e} = ren-decomp {e = e}
-
-  --⊸-refl-∙rr-id : {r : Γ ⊸ Δ} → ⊸-refl ∙rr r ≡ r
-  --⊸-refl-∙rr-id {Γ = ε} = refl
-  --⊸-refl-∙rr-id {Γ = _ , _} =
-  --  pair-eq (⊸-refl-∙rr-id ×, ⊸-refl-id)
+  ∙rrr-assoc : {r'' : Θ ⊸ E} {r' : Δ ⊸ Θ} {r : Γ ⊸ Δ}
+             → r'' ∙rr (r' ∙rr r) ≡ (r'' ∙rr r') ∙rr r
+  ∙rrr-assoc {Γ = ε} = refl
+  ∙rrr-assoc {Γ = _ , _} {r'' = r''} {r'} {r} = pair-eq
+    (∙rrr-assoc ×,
+     ren-decomp {r' = r''} {r'} {⊸-head r}) where
+    ren-decomp : {Γ : Context} {r' : Δ ⊸ Θ} {r : Γ ⊸ Δ} {e : A ∈ Γ}
+               → ren (ren e r) r' ≡ ren e (r' ∙rr r)
+    ren-decomp {e = e0} = refl
+    ren-decomp {e = eS e} = ren-decomp {e = e}
 
   --⊸-wkn-⟨⟩-id : {r : Γ ⊸ Δ} {e : A ∈ Δ} → ⊸-⟨ e ⟩ ∙rr (⊸-wkn r) ≡ r
   --⊸-wkn-⟨⟩-id {Γ = ε} = refl
@@ -315,6 +310,42 @@ module Props where
   --  (cong (λ t → app t _) (∙rs-decomp {t = t}))
   --  (cong (λ u → app _ u) (∙rs-decomp {t = u}))
 
+  ⊸-ext-wkn-id : {r' : Δ ⊸ Θ} {r : Γ ⊸ Δ} {e : A ∈ _}
+              → (r' ×, e) ∙rr (⊸-wkn r) ≡ r' ∙rr r
+  ⊸-refl-rid : {r : Γ ⊸ Δ} → ⊸-refl ∙rr r ≡ r
+  ⊸-refl-lid : {r : Γ ⊸ Δ} → r ∙rr ⊸-refl ≡ r
+  
+  ⊸-ext-wkn-id {Γ = ε} = refl
+  ⊸-ext-wkn-id {Γ = _ , _} = pair-eq (⊸-ext-wkn-id ×, refl)
+
+  ⊸-refl-rid {Γ = ε} = refl
+  ⊸-refl-rid {Γ = _ , _} = pair-eq (⊸-refl-rid ×, ⊸-refl-id)
+
+  ⊸-refl-lid {Γ = ε} = refl
+  ⊸-refl-lid {Γ = _ , _} {r = r} = pair-eq ((
+    r ∙rr ⊸-wkn'          ≡⟨ ⊸-ext-wkn-id ⟩
+    (⊸-tail r) ∙rr ⊸-refl ≡⟨ ⊸-refl-lid ⟩
+    (⊸-tail r) ∎) ×,
+    refl)
+
+  ⊸-ext-⟨⟩ : {r : Γ ⊸ Δ} {e : A ∈ _} → (r ×, e) ≡ ⊸-⟨ e ⟩ ∙rr ⊸-↑ r
+  ⊸-ext-⟨⟩ {Γ = ε} = refl
+  ⊸-ext-⟨⟩ {Γ = _ , _} {r = r} {e} = pair-eq (sym (
+    ⊸-⟨ e ⟩ ∙rr (⊸-wkn' ∙rr r) ≡⟨ ∙rrr-assoc {r = r} ⟩
+    (⊸-⟨ e ⟩ ∙rr ⊸-wkn') ∙rr r ≡⟨ cong (λ r' → r' ∙rr r) ⊸-ext-wkn-id ⟩
+    (⊸-refl ∙rr ⊸-refl) ∙rr r  ≡⟨ cong (λ r' → r' ∙rr r) ⊸-refl-rid ⟩
+    ⊸-refl ∙rr r               ≡⟨ ⊸-refl-rid ⟩
+    r ∎)×, refl)
+
+  ⊸-↑-wkn-id : {r : Γ ⊸ Δ}
+             → ⊸-↑ {A = A} r ∙rr ⊸-wkn' ≡ ⊸-wkn' ∙rr r
+  ⊸-↑-wkn-id {Γ = ε} = refl
+  ⊸-↑-wkn-id {Γ = _ , _} {r = r} =
+    ⊸-↑ r ∙rr ⊸-wkn'                ≡⟨ refl ⟩
+    (⊸-wkn' ∙rr r ×, e0) ∙rr ⊸-wkn' ≡⟨ ⊸-ext-wkn-id {r = ⊸-refl} ⟩
+    (⊸-wkn' ∙rr r) ∙rr ⊸-refl       ≡⟨ ⊸-refl-lid ⟩
+    ⊸-wkn' ∙rr r ∎
+
   ∙rss-assoc : {r : Θ ⊸ E} {ρ : Δ ~> Θ} {σ : Γ ~> Δ}
              → r ∙rs (ρ ∙ss σ) ≡ (r ∙rs ρ) ∙ss σ
   ∙rss-assoc {Γ = ε} = refl
@@ -357,10 +388,6 @@ module Props where
              → ρ ∙ss (r ∙rs σ) ≡ (ρ ∙sr r) ∙ss σ
   ∙srs-assoc {Γ = ε} = refl
   ∙srs-assoc {Γ = _ , _} = pair-eq ({!!} ×, {!!})
-
-  test : {r : Δ ⊸ Θ} {r' : Γ ⊸ Δ} {e : A ∈ _} → (r ×, e) ∙rr (⊸-wkn r') ≡ r ∙rr r'
-  test {Γ = ε} = refl
-  test {Γ = _ , _} = pair-eq (test ×, refl)
 
   ↑-∙ss : {ρ : Δ ~> Θ} {σ : Γ ~> Δ} → ~>-↑ {A = A} (ρ ∙ss σ) ≡ ~>-↑ ρ ∙ss ~>-↑ σ
   ↑-∙ss {ρ = ρ} {σ}  = pair-eq ((
