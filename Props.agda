@@ -222,7 +222,7 @@ module Props where
     (⊸-⟨ e ⟩ ∙rr ⊸-wkn') ∙rr r ≡⟨ cong (λ r' → r' ∙rr r) ⊸-ext-wkn-id ⟩
     (⊸-refl ∙rr ⊸-refl) ∙rr r  ≡⟨ cong (λ r' → r' ∙rr r) ⊸-refl-rid ⟩
     ⊸-refl ∙rr r               ≡⟨ ⊸-refl-rid ⟩
-    r ∎)×, refl)
+    r ∎) ×, refl)
 
   ↑-∙rr : {r' : Δ ⊸ Θ} {r : Γ ⊸ Δ}
         → ⊸-↑ {A = A} r' ∙rr ⊸-↑ r ≡ ⊸-↑ (r' ∙rr r)
@@ -447,6 +447,11 @@ module Props where
      ~>-tail σ ∎) ×,
      refl)
 
+  ~>-refl'-lid : {σ : Γ ~> Δ} → ~>-refl ∙ss σ ≡ σ
+  ~>-refl'-lid {Γ = ε} = refl
+  ~>-refl'-lid {Γ = _ , _} =
+    pair-eq (~>-refl'-lid ×, subst-id)
+
   ~>-↑-wkn-id : {σ : Γ ~> Δ}
               → ~>-↑ {A = A} σ ∙sr ⊸-wkn' ≡ ⊸-wkn' ∙rs σ
   ~>-↑-wkn-id {σ = σ} =
@@ -526,6 +531,17 @@ module Props where
       (cong (λ t → app t _) (helper {t = t}))
       (cong (λ u → app _ u) (helper {t = u}))
 
+  ~>-ext-⟨⟩ : {σ : Γ ~> Δ} {t : A ⊣ Δ}
+            → (σ ×, t) ≡ ⟨ t ⟩ ∙ss ~>-↑ σ
+  ~>-ext-⟨⟩ {Γ = ε} = refl
+  ~>-ext-⟨⟩ {Γ = _ , _} {σ = σ} {t} = pair-eq (sym (
+    ⟨ t ⟩ ∙ss (⊸-wkn' ∙rs σ)   ≡⟨ ∙srs-assoc {σ = σ} ⟩
+    (⟨ t ⟩ ∙sr ⊸-wkn') ∙ss σ   ≡⟨ cong (λ ρ → ρ ∙ss σ) ~>-ext-wkn-id ⟩
+    (~>-refl ∙sr ⊸-refl) ∙ss σ ≡⟨ cong (λ ρ → ρ ∙ss σ) ~>-refl-rid ⟩
+    ~>-refl ∙ss σ              ≡⟨ ~>-refl'-lid ⟩
+    σ ∎) ×,
+    refl)
+
   ↑-∙ss : {ρ : Δ ~> Θ} {σ : Γ ~> Δ} → ~>-↑ {A = A} (ρ ∙ss σ) ≡ ~>-↑ ρ ∙ss ~>-↑ σ
   ↑-∙ss {ρ = ρ} {σ}  = pair-eq ((
     ⊸-wkn' ∙rs (ρ ∙ss σ)                          ≡⟨ ∙rss-assoc ⟩
@@ -568,3 +584,9 @@ module Props where
   ∙ss-decomp {t = app t u} = trans
     (cong (λ t → app t _) (∙ss-decomp {t = t}))
     (cong (λ u → app _ u) (∙ss-decomp {t = u}))
+
+  ∙sss-assoc : {θ : Θ ~> E} {ρ : Δ ~> Θ} {σ : Γ ~> Δ}
+             → θ ∙ss (ρ ∙ss σ) ≡ (θ ∙ss ρ) ∙ss σ
+  ∙sss-assoc {Γ = ε} = refl
+  ∙sss-assoc {Γ = _ , _} {σ = σ} =
+    pair-eq (∙sss-assoc ×, sym (∙ss-decomp {t = ~>-head σ}))
