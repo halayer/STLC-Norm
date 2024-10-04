@@ -43,7 +43,7 @@ module Norm where
     if-⊤ : (if ⊤ then t else u) ↦c t
     if-⊥ : (if ⊥ then t else u) ↦c u
     ℕ-β  : rec n0 u v ↦c u
-    ℕ-β' : rec {Γ = Γ} (n' t) u v ↦c subst v ((~>-refl ×, t) ×, rec t u v)
+    ℕ-β' : Val t → rec {Γ = Γ} (n' t) u v ↦c subst v ((~>-refl ×, t) ×, rec t u v)
     --ℕ-β' : rec {Γ = Γ} (nat (suc n)) u v ↦c subst v (⟨ rec (nat n) u v ⟩ ∙ss ⟨ nat n ⟩)
 
   data _↦_ : A ⊣ Γ → A ⊣ Γ → Set where
@@ -64,7 +64,7 @@ module Norm where
   det-↦cc if-⊤ if-⊤ = refl
   det-↦cc if-⊥ if-⊥ = refl
   det-↦cc ℕ-β ℕ-β = refl
-  det-↦cc ℕ-β' ℕ-β' = refl
+  det-↦cc (ℕ-β' _) (ℕ-β' _) = refl
 
   is-val : (t : A ⊣ Γ) → Dec (Val t)
   is-val (var _) = no λ ()
@@ -73,8 +73,8 @@ module Norm where
   is-val (if _ then _ else _) = no λ ()
   is-val n0 = yes nat-z
   is-val (n' t) with is-val t
-  ...              | yes tv = {!!}
-  ...              | no ntv = {!!}
+  ...              | yes tv = yes (nat-s tv)
+  ...              | no ntv = no λ {(nat-s tv) → ntv tv}
   is-val (rec _ _ _) = no λ ()
   is-val (abs _) = yes abs
   is-val (app _ _) = no λ ()
@@ -147,18 +147,30 @@ module Norm where
   -- ... | no ns = no λ {(_ ×, here ());
   --                     (_ ×, (ap {t' = t'} s)) → ns (t' ×, s)}
 
+  nat-val-cant-be-reduced : {t : ℕ ⊣ Γ}
+                          → Val t → t ↦ t' → Empty
+  nat-val-cant-be-reduced nat-z (here ())
+  nat-val-cant-be-reduced (nat-s v) (ns s) =
+    nat-val-cant-be-reduced v s
+
   det-↦c : t ↦ u → t ↦c v → u ≡ v
   det-↦c (here c) c' = det-↦cc c c'
   det-↦c (ap (here ())) (β _)
   det-↦c (ap' (here ())) (β true)
   det-↦c (ap' (here ())) (β false)
-  det-↦c (ap' (here c)) (β nat-z) = {!!}
-  det-↦c (ap' (here c)) (β (nat-s _)) = {!!}
+  det-↦c (ap' (here ())) (β nat-z)
+  det-↦c (ap' (here ())) (β (nat-s _))
   det-↦c (ap' (here ())) (β abs)
+  det-↦c (ap' (ns s)) (β (nat-s v))
+    with nat-val-cant-be-reduced v s
+  ... | ()
   det-↦c (if (here ())) if-⊤
   det-↦c (if (here ())) if-⊥
   det-↦c (rec (here ())) ℕ-β
-
+  det-↦c (rec (ns s)) (ℕ-β' v)
+    with nat-val-cant-be-reduced v s
+  ... | ()
+  
   det-↦ : t ↦ u → t ↦ v → u ≡ v
   det-↦ (here c) s' = sym (det-↦c s' c)
   det-↦ s (here c) = det-↦c s c
@@ -168,16 +180,19 @@ module Norm where
   det-↦ (ap' s) (ap' s') = cong (app _) (det-↦ s s')
   det-↦ (if s) (if s') = cong (λ t → if t then _ else _) (det-↦ s s')
   det-↦ (rec s) (rec s') = cong (λ t → rec t _ _) (det-↦ s s')
+  det-↦ (ns s) (ns s') = cong n' (det-↦ s s')
 
   backstep : t ↦ t' → Val u → t ↦* u → t' ↦* u
   backstep (here ()) true done
   backstep (here ()) false done
-  backstep (here c) nat done = {!!}
   backstep (here ()) abs done
   backstep (ap s) () done
   backstep (ap' s) () done
   backstep (if s) () done
   backstep (rec s) () done
+  backstep (ns s) (nat-s v) done
+    with nat-val-cant-be-reduced v s
+  ... | ()
   backstep s _ (step s' j) with det-↦ s s'
   ...                         | refl = j
 
@@ -272,23 +287,33 @@ module Norm where
            ≡ subst (subst v (~>-↑ (~>-↑ σ)))
                  ((~>-refl ×, t) ×, rec t u (subst v (~>-↑ (~>-↑ σ))))
   lemma {v = v} {t = t} {σ = σ} {u} =
-    subst v ((σ ×, t) ×, rec t u (subst v (~>-↑ (~>-↑ σ))))
+    subst v ((σ ×, t) ×, _)
       ≡⟨ cong (subst v) ~>-ext-⟨⟩ ⟩
-    subst v (⟨ rec t u (subst v (~>-↑ (~>-↑ σ))) ⟩ ∙ss ~>-↑ (σ ×, t))
-      ≡⟨ cong (λ t' → subst v (⟨ rec t u (subst v (~>-↑ (~>-↑ σ))) ⟩ ∙ss ~>-↑ t')) ~>-ext-⟨⟩ ⟩
-    subst v (⟨ rec t u (subst v (~>-↑ (~>-↑ σ))) ⟩ ∙ss ~>-↑ (⟨ t ⟩ ∙ss ~>-↑ σ))
-      ≡⟨ cong (λ t' → subst v (⟨ rec t u (subst v (~>-↑ (~>-↑ σ))) ⟩ ∙ss t'))
-              (↑-∙ss {σ = ~>-↑ σ}) ⟩
-    subst v (⟨ _ ⟩ ∙ss (~>-↑ ⟨ t ⟩ ∙ss ~>-↑ (~>-↑ σ)))
-      ≡⟨ cong (λ t → subst v (⟨ _ ⟩ ∙ss t)) (sym ↑-∙ss) ⟩
+    subst v (⟨ _ ⟩ ∙ss ~>-↑ (σ ×, t))
+      ≡⟨ cong (λ σ → subst v (⟨ rec-part ⟩ ∙ss ~>-↑ σ)) ~>-ext-⟨⟩ ⟩
     subst v (⟨ _ ⟩ ∙ss ~>-↑ (⟨ t ⟩ ∙ss ~>-↑ σ))
-      ≡⟨ {!!} ⟩
-    --  ≡⟨ cong (subst v) (∙sss-assoc {σ = ~>-↑ (~>-↑ σ)}) ⟩
-    --subst v ((⟨ _ ⟩ ∙ss ~>-↑ ⟨ t ⟩) ∙ss ~>-↑ (~>-↑ σ))
-    --  ≡⟨ {!!} ⟩
-    subst v (((~>-refl ×, t) ×, _) ∙ss (~>-↑ (~>-↑ σ)))
+      ≡⟨ cong (λ σ → subst v (⟨ rec-part ⟩ ∙ss σ)) (↑-∙ss {σ = ~>-↑ σ}) ⟩
+    subst v (⟨ _ ⟩ ∙ss (~>-↑ ⟨ t ⟩ ∙ss ~>-↑ (~>-↑ σ)))
+      ≡⟨ cong (subst v) (∙sss-assoc {σ = ~>-↑ (~>-↑ σ)}) ⟩
+    subst v ((⟨ _ ⟩ ∙ss ~>-↑ ⟨ t ⟩) ∙ss ~>-↑ (~>-↑ σ))
       ≡⟨ ∙ss-decomp {t = v} ⟩
-    subst (subst v (~>-↑ (~>-↑ σ))) ((~>-refl ×, t) ×, _) ∎
+    subst (subst v (~>-↑ (~>-↑ σ))) (⟨ _ ⟩ ∙ss ~>-↑ ⟨ t ⟩)
+      ≡⟨ cong (subst (subst v (~>-↑ (~>-↑ σ)))) (sym ~>-ext-⟨⟩) ⟩
+    subst (subst v (~>-↑ (~>-↑ σ))) ((~>-refl ×, t) ×, _) ∎ where
+    rec-part = rec t u (subst v (~>-↑ (~>-↑ σ)))
+
+  succ-cant-reduce-to-0 : n' t ↦* n0 → Empty
+  succ-cant-reduce-to-0 (step (ns _) j) = succ-cant-reduce-to-0 j
+
+  extract-succ-reduction : n' t ↦* n' t' → t ↦* t'
+  extract-succ-reduction done = done
+  extract-succ-reduction (step (ns s) j) = step s (extract-succ-reduction j)
+
+  snn : SN (n' t) → SN t
+  snn (_ ×, n0 ×, nat-z ×, j) with succ-cant-reduce-to-0 j
+  ... | ()
+  snn (_ ×, n' tv ×, nat-s tvv ×, j) =
+    _ ×, tv ×, tvv ×, extract-succ-reduction j
 
   rec-sn'-zero : {σ : Γ ~> ε} {u : A ⊣ ε}
                → SN u
@@ -300,37 +325,39 @@ module Norm where
               (app-sn snu snu')
 
   rec-sn'-suc : {σ : Γ ~> ε} {u : A ⊣ ε}
-              → SNs σ → SN t → SN u
+              → SNs σ → SN t → Val t → SN u
               → SN (rec t u (subst v (~>-↑ (~>-↑ σ))))
               → SN' (rec (n' t) u (subst v (~>-↑ (~>-↑ σ))))
-  rec-sn'-suc {A = 𝟚} _ _ _ _ = tt
-  rec-sn'-suc {A = ℕ} _ _ _ _ = tt
+  rec-sn'-suc {A = 𝟚} _ _ _ _ _ = tt
+  rec-sn'-suc {A = ℕ} _ _ _ _ _ = tt
   rec-sn'-suc {A = A ⇒ B} {t = t} {v = v} {σ = σ} {u}
-    sns snt snu snp u' snu' =
-    sn-pres'* (lifts ap (step (here ℕ-β') done))
+    sns snt tv snu snp u' snu' =
+    sn-pres'* (lifts ap (step (here (ℕ-β' tv)) done))
               (app-sn
                 (transp {B = SN} (lemma {v = v})
                   (fund-thm v ((sns ×, snt) ×, snp)))
                 snu')
 
   rec-sn-rec : {σ : Γ ~> ε} {u : A ⊣ ε}
-             → SNs σ → SN t → SN u
+             → SNs σ → SN t → Val t → SN u
              → SN (rec t u (subst v (~>-↑ (~>-↑ σ))))
-  rec-sn-rec {t = n0} {v = v} _ _ snu@(_ ×, uv ×, uvv ×, j) =
+  rec-sn-rec {v = v} sns _
+    nat-z snu@(_ ×, uv ×, uvv ×, j) =
     rec-sn'-zero {v = v} snu ×,
     uv ×,
     uvv ×,
-    (step (here ℕ-β) done ++ j)
-  rec-sn-rec {t = n' t} {v = v} sns snt snu@(sn'u ×, uv ×, uvv ×, j) =
-    rec-sn'-suc {v = v} sns {!!} snu snp ×,
-    proj₁ (sn→⇓ nf) ×,
-    proj₁ (proj₂ (sn→⇓ nf)) ×,
-    (step (here ℕ-β') done ++
-      (transp {B = λ t → t ↦* proj₁ (sn→⇓ nf)} (lemma {v = v})
-        {!!}))
-    where
-    snp = rec-sn-rec {t = t} {v = v} sns {!!} snu
-    nf = fund-thm v ((sns ×, snt) ×, snp)
+    (step (here ℕ-β) done) ++ j
+  rec-sn-rec {t = n' t} {v = v} sns snt
+    (nat-s tv) snu =
+    rec-sn'-suc {v = v} sns snt' tv snu snp ×,
+    proj₁ (sn→⇓ trg) ×,
+    proj₁ (proj₂ (sn→⇓ trg)) ×,
+    (step (here (ℕ-β' tv)) done) ++
+      (transp {B = λ t → t ↦* proj₁ (sn→⇓ trg)} (lemma {v = v})
+        (proj₂ (proj₂ (sn→⇓ trg)))) where
+    snt' =  snn snt
+    snp = rec-sn-rec {v = v} sns snt' tv snu
+    trg = fund-thm v ((sns ×, snt') ×, snp)
 
   rec-sn'-⇒ : {σ : Γ ~> ε} {t : ℕ ⊣ ε} {u : (A ⇒ B) ⊣ ε}
             → SNs σ → SN t → SN u
@@ -347,13 +374,13 @@ module Norm where
     sns (_ ×, _ ×, _ ×, done) snu@(sn'u ×, _) u' snu' =
     sn-pres' (ap (here ℕ-β)) (sn'u u' snu')
   rec-sn'-⇒ {v = v} {t = n' t'} sns snt@(_ ×, _ ×, (nat-s t'v) ×, done) snu u' snu' =
-    sn-pres' (ap (here ℕ-β'))
+    sn-pres' (ap (here (ℕ-β' t'v)))
              (transp {B = λ t → SN (app t u')} (lemma {v = v})
                (app-sn (fund-thm v ((sns ×, tt ×, t' ×, t'v ×, done) ×,
-                                    rec-sn-rec {v = v} sns (tt ×, t' ×, t'v ×, done) snu))
+                                    rec-sn-rec {v = v} sns (tt ×, t' ×, t'v ×, done) t'v snu))
                  snu')) where
     snp = (fund-thm v ((sns ×, tt ×, t' ×, t'v ×, done) ×,
-                       (rec-sn-rec {v = v} sns snt snu)))
+                       (rec-sn-rec {v = v} sns snt (proj₁ (proj₂ (sn→⇓ snt))) snu)))
   rec-sn'-⇒ {v = v} sns (_ ×, tv ×, tvv ×, step s j) snu u' snu' =
     sn-pres' (ap (rec s))
       (rec-sn'-⇒ {v = v} sns (_ ×, tv ×, tvv ×, j) snu u' snu')
@@ -366,7 +393,7 @@ module Norm where
     proj₁ (sn→⇓ next) ×,
     proj₁ (proj₂ (sn→⇓ next)) ×,
     lifts rec j ++ (proj₂ (proj₂ (sn→⇓ next))) where
-    next = rec-sn-rec {t = t} {v = v} sns (tt ×, t ×, tv ×, done) snu
+    next = rec-sn-rec {t = t} {v = v} sns (tt ×, t ×, tv ×, done) tv snu
 
   abs-sn' : {σ : Γ ~> ε} {t : B ⊣ (A , Γ)}
           → SNs σ → SN' (abs (subst t (~>-↑ σ)))
