@@ -1,5 +1,3 @@
---{-# OPTIONS --allow-unsolved-metas #-}
-
 module Norm where
 
   -- https://continuation.passing.style/blog/Strong_Normalization_of_STLC.html
@@ -258,78 +256,99 @@ module Norm where
 
   app-sn : SN t → SN u → SN (app t u)
 
-  rec-sn-rec : {σ : Γ ~> ε} {u : A ⊣ ε}
-             → SNs σ → SN u → SN (rec (nat n) u (subst v (~>-↑ (~>-↑ σ))))
-             
-  rec-sn' : {σ : Γ ~> ε} {u : A ⊣ ε} {v : A ⊣ (A , ℕ , Γ)}
-          → SNs σ → t ⇓ → SN u
-          → SN' (rec t u (subst v (~>-↑ (~>-↑ σ))))
-  rec-sn' {A = 𝟚} _ _ _ = tt
-  rec-sn' {A = ℕ} _ _ _ = tt
-  rec-sn' {A = A ⇒ B} _ (nat 0 ×, _ ×, j) (sn'u ×, _) u' snu' =
-    sn-pres'* ((lifts (λ t → ap (rec t)) j) ++ step (ap (here ℕ-β)) done)
-              (sn'u u' snu')
-  rec-sn' {A = A ⇒ B} {σ = σ} {u = u} {v} sns (nat (suc n) ×, _ ×, j) snu@(sn'u ×, _) u' snu' =
-    sn-pres'* ((lifts (λ t → ap (rec t)) j) ++ step (ap (here ℕ-β')) done)
-              (transp {B = λ t → SN (app t _)} helper
-                ({!!} ×,
-                {!!} ×,
-                {!!} ×,
-                ((proj₂ (proj₂ (sn→⇓ (app-sn (fund-thm v ((sns ×, tt ×, nat n ×, nat ×, done) ×,
-                                                          (rec-sn-rec {v = v} sns snu))) snu')))) ++
-                 {!!}))) where
-    helper : subst v ((σ ×, nat n) ×, rec (nat n) u (subst v (~>-↑ (~>-↑ σ))))
-             ≡ subst (subst v (~>-↑ (~>-↑ σ)))
-                   ((~>-refl ×, nat n) ×, rec (nat n) u (subst v (~>-↑ (~>-↑ σ))))
-    helper =
-      subst v ((σ ×, nat n) ×, rec (nat n) u (subst v (~>-↑ (~>-↑ σ))))
-        ≡⟨ cong (subst v) ~>-ext-⟨⟩ ⟩
-      subst v (⟨ rec (nat n) u (subst v (~>-↑ (~>-↑ σ))) ⟩ ∙ss ~>-↑ (σ ×, nat n))
-        ≡⟨ cong (λ t → subst v (⟨ rec (nat n) u (subst v (~>-↑ (~>-↑ σ))) ⟩ ∙ss ~>-↑ t)) ~>-ext-⟨⟩ ⟩
-      subst v (⟨ rec (nat n) u (subst v (~>-↑ (~>-↑ σ))) ⟩ ∙ss ~>-↑ (⟨ nat n ⟩ ∙ss ~>-↑ σ))
-        ≡⟨ cong (λ t → subst v (⟨ rec (nat n) u (subst v (~>-↑ (~>-↑ σ))) ⟩ ∙ss t))
-                (↑-∙ss {σ = ~>-↑ σ}) ⟩
-      subst v (⟨ _ ⟩ ∙ss (~>-↑ ⟨ nat n ⟩ ∙ss ~>-↑ (~>-↑ σ)))
-        ≡⟨ cong (subst v) (∙sss-assoc {σ = ~>-↑ (~>-↑ σ)}) ⟩
-      subst v (((~>-refl ×, nat n) ×, _) ∙ss (~>-↑ (~>-↑ σ)))
-        ≡⟨ ∙ss-decomp {t = v} ⟩
-      subst (subst v (~>-↑ (~>-↑ σ))) ((~>-refl ×, nat n) ×, _) ∎
+  lemma : {σ : Γ ~> ε} {u : A ⊣ ε}
+        → subst v ((σ ×, nat n) ×, rec (nat n) u (subst v (~>-↑ (~>-↑ σ))))
+           ≡ subst (subst v (~>-↑ (~>-↑ σ)))
+                 ((~>-refl ×, nat n) ×, rec (nat n) u (subst v (~>-↑ (~>-↑ σ))))
+  lemma {v = v} {n = n} {σ = σ} {u} =
+    subst v ((σ ×, nat n) ×, rec (nat n) u (subst v (~>-↑ (~>-↑ σ))))
+      ≡⟨ cong (subst v) ~>-ext-⟨⟩ ⟩
+    subst v (⟨ rec (nat n) u (subst v (~>-↑ (~>-↑ σ))) ⟩ ∙ss ~>-↑ (σ ×, nat n))
+      ≡⟨ cong (λ t → subst v (⟨ rec (nat n) u (subst v (~>-↑ (~>-↑ σ))) ⟩ ∙ss ~>-↑ t)) ~>-ext-⟨⟩ ⟩
+    subst v (⟨ rec (nat n) u (subst v (~>-↑ (~>-↑ σ))) ⟩ ∙ss ~>-↑ (⟨ nat n ⟩ ∙ss ~>-↑ σ))
+      ≡⟨ cong (λ t → subst v (⟨ rec (nat n) u (subst v (~>-↑ (~>-↑ σ))) ⟩ ∙ss t))
+              (↑-∙ss {σ = ~>-↑ σ}) ⟩
+    subst v (⟨ _ ⟩ ∙ss (~>-↑ ⟨ nat n ⟩ ∙ss ~>-↑ (~>-↑ σ)))
+      ≡⟨ cong (subst v) (∙sss-assoc {σ = ~>-↑ (~>-↑ σ)}) ⟩
+    subst v (((~>-refl ×, nat n) ×, _) ∙ss (~>-↑ (~>-↑ σ)))
+      ≡⟨ ∙ss-decomp {t = v} ⟩
+    subst (subst v (~>-↑ (~>-↑ σ))) ((~>-refl ×, nat n) ×, _) ∎
 
-  rec-sn-rec {n = 0} {v = v} sn snu@(sn'u ×, uv ×, uvv ×, j) =
-    rec-sn' {v = v} sn (nat zero ×, nat ×, done) snu ×,
-    uv ×, uvv ×, (step (here ℕ-β) done ++ j)
-  rec-sn-rec {n = suc n} {v = v} {σ = σ} {u} sn snu@(sn'u ×, _) =
-    rec-sn' {v = v} sn (nat (suc n) ×, nat ×, done) snu ×,
-    proj₁ (sn→⇓ (transp {B = SN} helper (fund-thm v ((sn ×, tt ×, nat n ×, nat ×, done) ×, rec-sn-rec {v = v} sn snu)))) ×,
-    proj₁ (proj₂ (sn→⇓ (transp {B = SN} helper (fund-thm v ((sn ×, tt ×, nat n ×, nat ×, done) ×, rec-sn-rec {v = v} sn snu))))) ×,
+  rec-sn'-zero : {σ : Γ ~> ε} {u : A ⊣ ε}
+               → SN u
+               → SN' (rec (nat zero) u (subst v (~>-↑ (~>-↑ σ))))
+  rec-sn'-zero {A = 𝟚} _ = tt
+  rec-sn'-zero {A = ℕ} _ = tt
+  rec-sn'-zero {A = A ⇒ B} snu u' snu' =
+    sn-pres'* (lifts ap (step (here ℕ-β) done))
+              (app-sn snu snu')
+
+  rec-sn'-suc : {σ : Γ ~> ε} {u : A ⊣ ε}
+              → SNs σ → SN u
+              → SN (rec (nat n) u (subst v (~>-↑ (~>-↑ σ))))
+              → SN' (rec (nat (suc n)) u (subst v (~>-↑ (~>-↑ σ))))
+  rec-sn'-suc {A = 𝟚} _ _ _ = tt
+  rec-sn'-suc {A = ℕ} _ _ _ = tt
+  rec-sn'-suc {A = A ⇒ B} {n = n} {v = v} {σ = σ} {u}
+    sns snu snp u' snu' =
+    sn-pres'* (lifts ap (step (here ℕ-β') done))
+              (app-sn
+                (transp {B = SN} (lemma {v = v})
+                  (fund-thm v ((sns ×, tt ×, nat n ×, nat ×, done) ×, snp)))
+                snu')
+
+  rec-sn-rec : {σ : Γ ~> ε} {u : A ⊣ ε}
+             → SNs σ → SN u
+             → SN (rec (nat n) u (subst v (~>-↑ (~>-↑ σ))))
+  rec-sn-rec {n = 0} {v = v} _ snu@(_ ×, uv ×, uvv ×, j) =
+    rec-sn'-zero {v = v} snu ×,
+    uv ×,
+    uvv ×,
+    (step (here ℕ-β) done ++ j)
+  rec-sn-rec {n = suc n} {v = v} sns snu@(sn'u ×, uv ×, uvv ×, j) =
+    rec-sn'-suc {v = v} sns snu snp ×,
+    proj₁ (sn→⇓ nf) ×,
+    proj₁ (proj₂ (sn→⇓ nf)) ×,
     (step (here ℕ-β') done ++
-     proj₂ (proj₂ (sn→⇓ (transp {B = SN} helper (fund-thm v ((sn ×, tt ×, nat n ×, nat ×, done) ×, rec-sn-rec {v = v} sn snu)))))) where
-    helper : subst v ((σ ×, nat n) ×, rec (nat n) u (subst v (~>-↑ (~>-↑ σ))))
-             ≡ subst (subst v (~>-↑ (~>-↑ σ)))
-                   ((~>-refl ×, nat n) ×, rec (nat n) u (subst v (~>-↑ (~>-↑ σ))))
-    helper =
-      subst v ((σ ×, nat n) ×, rec (nat n) u (subst v (~>-↑ (~>-↑ σ))))
-        ≡⟨ cong (subst v) ~>-ext-⟨⟩ ⟩
-      subst v (⟨ rec (nat n) u (subst v (~>-↑ (~>-↑ σ))) ⟩ ∙ss ~>-↑ (σ ×, nat n))
-        ≡⟨ cong (λ t → subst v (⟨ rec (nat n) u (subst v (~>-↑ (~>-↑ σ))) ⟩ ∙ss ~>-↑ t)) ~>-ext-⟨⟩ ⟩
-      subst v (⟨ rec (nat n) u (subst v (~>-↑ (~>-↑ σ))) ⟩ ∙ss ~>-↑ (⟨ nat n ⟩ ∙ss ~>-↑ σ))
-        ≡⟨ cong (λ t → subst v (⟨ rec (nat n) u (subst v (~>-↑ (~>-↑ σ))) ⟩ ∙ss t))
-                (↑-∙ss {σ = ~>-↑ σ}) ⟩
-      subst v (⟨ _ ⟩ ∙ss (~>-↑ ⟨ nat n ⟩ ∙ss ~>-↑ (~>-↑ σ)))
-        ≡⟨ cong (subst v) (∙sss-assoc {σ = ~>-↑ (~>-↑ σ)}) ⟩
-      subst v (((~>-refl ×, nat n) ×, _) ∙ss (~>-↑ (~>-↑ σ)))
-        ≡⟨ ∙ss-decomp {t = v} ⟩
-      subst (subst v (~>-↑ (~>-↑ σ))) ((~>-refl ×, nat n) ×, _) ∎
+      (transp {B = λ t → t ↦* proj₁ (sn→⇓ nf)} (lemma {v = v})
+        (proj₂ (proj₂ (sn→⇓ nf)))))
+    where
+    snp = rec-sn-rec {n = n} {v = v} sns snu
+    nf = fund-thm v ((sns ×, tt ×, nat n ×, nat ×, done) ×, snp)
+
+  rec-sn'-⇒ : {σ : Γ ~> ε} {t : ℕ ⊣ ε} {u : (A ⇒ B) ⊣ ε}
+            → SNs σ → t ⇓ → SN u
+            → SN' (rec t u (subst v (~>-↑ (~>-↑ σ))))
+  rec-sn' : {σ : Γ ~> ε} {t : ℕ ⊣ ε} {u : A ⊣ ε}
+          → SNs σ → SN t → SN u
+          → SN' (rec t u (subst v (~>-↑ (~>-↑ σ))))
+  rec-sn' {A = 𝟚} sns snt snu = tt
+  rec-sn' {A = ℕ} sns snt snu = tt
+  rec-sn' {A = A ⇒ B} {v = v} sns snt snu =
+    rec-sn'-⇒ {v = v} sns (sn→⇓ snt) snu
+
+  rec-sn'-⇒ {t = nat zero}
+    sns (_ ×, _ ×, done) snu@(sn'u ×, _) u' snu' =
+    sn-pres' (ap (here ℕ-β)) (sn'u u' snu')
+  rec-sn'-⇒ {v = v} {t = nat (suc n)} sns (_ ×, _ ×, done) snu u' snu' =
+    sn-pres' (ap (here ℕ-β'))
+             (transp {B = λ t → SN (app t u')} (lemma {v = v})
+               (app-sn snp snu')) where
+    snp = (fund-thm v ((sns ×, tt ×, nat n ×, nat ×, done) ×,
+                       (rec-sn-rec {v = v} sns snu)))
+  rec-sn'-⇒ {v = v} sns (tv ×, tvv ×, step s j) snu u' snu' =
+    sn-pres' (ap (rec s)) --{!!}
+      (rec-sn'-⇒ {v = v} sns (tv ×, tvv ×, j) snu u' snu')
 
   rec-sn : {σ : Γ ~> ε} {t : ℕ ⊣ ε} {u : A ⊣ ε}
-         → SNs σ → SN t → SN u → SN (rec t u (subst v (~>-↑ (~>-↑ σ))))
-  rec-sn {v = v} {σ = σ} {t} {u} sn
-    (_ ×, t⇓@(nat n ×, _ ×, j))
-    snu@(sn'u ×, uv ×, uvv ×, ju) =
-    rec-sn' {σ = σ} {u} {v} sn t⇓ snu ×,
-    proj₁ (sn→⇓ (rec-sn-rec {n = n} {v = v} sn snu)) ×,
-    proj₁ (proj₂ (sn→⇓ (rec-sn-rec {n = n} sn snu))) ×,
-    (lifts rec j ++ proj₂ (proj₂ (sn→⇓ (rec-sn-rec sn snu))))
+         → SNs σ → SN t → SN u
+         → SN (rec t u (subst v (~>-↑ (~>-↑ σ))))
+  rec-sn {v = v} sns snt@(sn't ×, nat n ×, _ ×, j) snu =
+    rec-sn' {v = v} sns snt snu ×,
+    proj₁ (sn→⇓ next) ×,
+    proj₁ (proj₂ (sn→⇓ next)) ×,
+    lifts rec j ++ (proj₂ (proj₂ (sn→⇓ next))) where
+    next = rec-sn-rec {n = n} {v = v} sns snu
 
   abs-sn' : {σ : Γ ~> ε} {t : B ⊣ (A , Γ)}
           → SNs σ → SN' (abs (subst t (~>-↑ σ)))
@@ -351,7 +370,7 @@ module Norm where
   abs-sn {σ = σ} {t} sns =
     abs-sn' {t = t} sns ×, abs (subst t (~>-↑ σ)) ×, abs ×, done
 
-  app-sn {u = u} (t ×, _) snu = t u snu
+  app-sn (sn't ×, _) snu = sn't _ snu
 
   fund-thm (var e0) (_ ×, sn) = sn
   fund-thm (var (eS e)) (σs ×, _) = fund-thm (var e) σs
