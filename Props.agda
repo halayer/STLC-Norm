@@ -67,8 +67,8 @@ module Props where
   rename ⊤ _ = ⊤
   rename ⊥ _ = ⊥
   rename (if t then u else v) r = if rename t r then rename u r else rename v r
-  rename z _ = z
-  rename (s t) r = s (rename t r)
+  rename n0 _ = n0
+  rename (n' t) r = n' (rename t r)
   rename (rec t u v) r = rec (rename t r) (rename u r) (rename v (⊸-↑ (⊸-↑ r)))
   rename (abs t) r = abs (rename t (⊸-↑ r))
   rename (app t u) r = app (rename t r) (rename u r)
@@ -131,8 +131,8 @@ module Props where
   subst ⊤ _ = ⊤
   subst ⊥ _ = ⊥
   subst (if t then u else v) σ = if subst t σ then subst u σ else subst v σ
-  subst z _ = z
-  subst (s t) σ = s (subst t σ)
+  subst n0 _ = n0
+  subst (n' t) σ = n' (subst t σ)
   subst (rec t u v) σ = rec (subst t σ) (subst u σ) (subst v (~>-↑ (~>-↑ σ)))
   subst (abs t) σ = abs (subst t (~>-↑ σ))
   subst (app t u) σ = app (subst t σ) (subst u σ)
@@ -156,8 +156,8 @@ module Props where
     (cong (λ u → if _ then u else _) ⊸→~>-rename-subst))
     (cong (λ v → if _ then _ else v) ⊸→~>-rename-subst)
   --⊸→~>-rename-subst {t = nat n} = refl
-  ⊸→~>-rename-subst {t = z} = refl
-  ⊸→~>-rename-subst {t = s t} = cong s ⊸→~>-rename-subst
+  ⊸→~>-rename-subst {t = n0} = refl
+  ⊸→~>-rename-subst {t = n' t} = cong n' ⊸→~>-rename-subst
   ⊸→~>-rename-subst {t = rec t u v} = trans (trans
     (cong (λ t → rec t _ _) ⊸→~>-rename-subst)
     (cong (λ u → rec _ u _) ⊸→~>-rename-subst))
@@ -251,8 +251,8 @@ module Props where
     (cong (λ t → if t then _ else _) (∙rr-decomp {t = t}))
     (cong (λ u → if _ then u else _) (∙rr-decomp {t = u})))
     (cong (λ v → if _ then _ else v) (∙rr-decomp {t = v}))
-  ∙rr-decomp {t = z} = refl
-  ∙rr-decomp {t = s t} = cong s (∙rr-decomp {t = t})
+  ∙rr-decomp {t = n0} = refl
+  ∙rr-decomp {t = n' t} = cong n' (∙rr-decomp {t = t})
   ∙rr-decomp {t = rec t u v} {r = r} = trans (trans
     (cong (λ t → rec t _ _) (∙rr-decomp {t = t}))
     (cong (λ u → rec _ u _) (∙rr-decomp {t = u})))
@@ -307,8 +307,8 @@ module Props where
     (cong (λ t → if t then _ else _) (∙rs-decomp {t = t}))
     (cong (λ u → if _ then u else _) (∙rs-decomp {t = u})))
     (cong (λ v → if _ then _ else v) (∙rs-decomp {t = v}))
-  ∙rs-decomp {t = z} = refl
-  ∙rs-decomp {t = s t} = cong s (∙rs-decomp {t = t})
+  ∙rs-decomp {t = n0} = refl
+  ∙rs-decomp {t = n' t} = cong n' (∙rs-decomp {t = t})
   ∙rs-decomp {t = rec t u v} {r = r} {σ} = trans (trans
     (cong (λ t → rec t _ _) (∙rs-decomp {t = t}))
     (cong (λ u → rec _ u _) (∙rs-decomp {t = u})))
@@ -350,8 +350,8 @@ module Props where
       (cong (λ t → if t then _ else _) (helper {t = t}))
       (cong (λ u → if _ then u else _) (helper {t = u})))
       (cong (λ v → if _ then _ else v) (helper {t = v}))
-    helper {t = z} = refl
-    helper {t = s t} = cong s (helper {t = t})
+    helper {t = n0} = refl
+    helper {t = n' t} = cong n' (helper {t = t})
     helper {t = rec t u v} {r = r} {σ} = trans (trans
       (cong (λ t → rec t _ _) (helper {t = t}))
       (cong (λ u → rec _ u _) (helper {t = u})))
@@ -375,8 +375,8 @@ module Props where
     (cong (λ t → if t then _ else _) (rename-id {t = t}))
     (cong (λ u → if _ then u else _) (rename-id {t = u})))
     (cong (λ v → if _ then _ else v) (rename-id {t = v}))
-  rename-id {t = z} = refl
-  rename-id {t = s t} = cong s (rename-id {t = t})
+  rename-id {t = n0} = refl
+  rename-id {t = n' t} = cong n' (rename-id {t = t})
   rename-id {t = rec t u v} = trans (trans
     (cong (λ t → rec t _ _) (rename-id {t = t}))
     (cong (λ u → rec _ u _) (rename-id {t = u})))
@@ -402,8 +402,8 @@ module Props where
     (cong (λ t → if t then _ else _) (subst-id {t = t}))
     (cong (λ u → if _ then u else _) (subst-id {t = u})))
     (cong (λ v → if _ then _ else v) (subst-id {t = v}))
-  subst-id {t = z} = refl
-  subst-id {t = s t} = cong s (subst-id {t = t})
+  subst-id {t = n0} = refl
+  subst-id {t = n' t} = cong n' (subst-id {t = t})
   subst-id {t = rec t u v} = trans (trans
     (cong (λ t → rec t _ _) (subst-id {t = t}))
     (cong (λ u → rec _ u _) (subst-id {t = u})))
@@ -490,8 +490,8 @@ module Props where
     (cong (λ t → if t then _ else _) (∙sr-decomp {t = t}))
     (cong (λ u → if _ then u else _) (∙sr-decomp {t = u})))
     (cong (λ v → if _ then _ else v) (∙sr-decomp {t = v}))
-  ∙sr-decomp {t = z} = refl
-  ∙sr-decomp {t = s t} = cong s (∙sr-decomp {t = t})
+  ∙sr-decomp {t = n0} = refl
+  ∙sr-decomp {t = n' t} = cong n' (∙sr-decomp {t = t})
   ∙sr-decomp {t = rec t u v} {σ = σ} {r} = trans (trans
       (cong (λ t → rec t _ _) (∙sr-decomp {t = t}))
       (cong (λ u → rec _ u _) (∙sr-decomp {t = u})))
@@ -524,8 +524,8 @@ module Props where
       (cong (λ t → if t then _ else _) (helper {t = t}))
       (cong (λ u → if _ then u else _) (helper {t = u})))
       (cong (λ v → if _ then _ else v) (helper {t = v}))
-    helper {t = z} = refl
-    helper {t = s t} = cong s (helper {t = t})
+    helper {t = n0} = refl
+    helper {t = n' t} = cong n' (helper {t = t})
     helper {t = rec t u v} = trans (trans
       (cong (λ t → rec t _ _) (helper {t = t}))
       (cong (λ u → rec _ u _) (helper {t = u})))
@@ -581,8 +581,8 @@ module Props where
     (cong (λ t → if t then _ else _) (∙ss-decomp {t = t}))
     (cong (λ u → if _ then u else _) (∙ss-decomp {t = u})))
     (cong (λ v → if _ then _ else v) (∙ss-decomp {t = v}))
-  ∙ss-decomp {t = z} = refl
-  ∙ss-decomp {t = s t} = cong s (∙ss-decomp {t = t})
+  ∙ss-decomp {t = n0} = refl
+  ∙ss-decomp {t = n' t} = cong n' (∙ss-decomp {t = t})
   ∙ss-decomp {t = rec t u v} {ρ = ρ} {σ} = trans (trans
     (cong (λ t → rec t _ _) (∙ss-decomp {t = t}))
     (cong (λ u → rec _ u _) (∙ss-decomp {t = u})))

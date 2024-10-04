@@ -27,8 +27,8 @@ module Base where
                   → A ⊣ Γ
 
     -- Natural Numbers
-    z : ℕ ⊣ Γ
-    s : ℕ ⊣ Γ → ℕ ⊣ Γ
+    n0 : ℕ ⊣ Γ
+    n' : ℕ ⊣ Γ → ℕ ⊣ Γ
     rec : ℕ ⊣ Γ → A ⊣ Γ → A ⊣ (A , (ℕ , Γ))
         → A ⊣ Γ
 
