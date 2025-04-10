@@ -31,7 +31,6 @@ module Norm where
   data Val : A ⊣ Γ → Set where
     true : Val {Γ = Γ} ⊤
     false : Val {Γ = Γ} ⊥
-    --nat : Val {Γ = Γ} (nat n)
     nat-z : Val {Γ = Γ} n0
     nat-s : Val t → Val (n' t)
     abs : Val (abs t)
@@ -44,7 +43,6 @@ module Norm where
     if-⊥ : (if ⊥ then t else u) ↦c u
     ℕ-β  : rec n0 u v ↦c u
     ℕ-β' : Val t → rec {Γ = Γ} (n' t) u v ↦c subst v ((~>-refl ×, t) ×, rec t u v)
-    --ℕ-β' : rec {Γ = Γ} (nat (suc n)) u v ↦c subst v (⟨ rec (nat n) u v ⟩ ∙ss ⟨ nat n ⟩)
 
   data _↦_ : A ⊣ Γ → A ⊣ Γ → Set where
     here : t ↦c t' → t ↦ t'
@@ -65,87 +63,6 @@ module Norm where
   det-↦cc if-⊥ if-⊥ = refl
   det-↦cc ℕ-β ℕ-β = refl
   det-↦cc (ℕ-β' _) (ℕ-β' _) = refl
-
-  is-val : (t : A ⊣ Γ) → Dec (Val t)
-  is-val (var _) = no λ ()
-  is-val ⊤ = yes true
-  is-val ⊥ = yes false
-  is-val (if _ then _ else _) = no λ ()
-  is-val n0 = yes nat-z
-  is-val (n' t) with is-val t
-  ...              | yes tv = yes (nat-s tv)
-  ...              | no ntv = no λ {(nat-s tv) → ntv tv}
-  is-val (rec _ _ _) = no λ ()
-  is-val (abs _) = yes abs
-  is-val (app _ _) = no λ ()
-
-  -- next-↦ : (t : A ⊣ Γ) → Dec (∃[ t' ] t ↦ t')
-  -- next-↦ (var _) = no λ {(_ ×, here ())}
-  -- next-↦ ⊤ = no λ {(_ ×, here ())}
-  -- next-↦ ⊥ = no λ {(_ ×, here ())}
-  -- next-↦ (if var _ then _ else _)
-  --   = no λ {(_ ×, here ()); (_ ×, if (here ()))}
-  -- next-↦ (if ⊤ then u else _) = yes (u ×, here if-⊤)
-  -- next-↦ (if ⊥ then _ else v) = yes (v ×, here if-⊥)
-  -- next-↦ (if if t₁ then t₂ else t₃ then u else v)
-  --   with next-↦ (if t₁ then t₂ else t₃)
-  -- ...  | yes (t' ×, s) = yes ((if t' then u else v) ×, if s)
-  -- ...  | no ns = no λ {(_ ×, here ());
-  --                      (_ ×, (if {t' = t'} s)) → ns (t' ×, s)}
-  -- next-↦ (if rec t₁ t₂ t₃ then u else v) with next-↦ (rec t₁ t₂ t₃)
-  -- ... | yes (t' ×, s) = yes ((if t' then u else v) ×, if s)
-  -- ... | no ns = no λ {(_ ×, here ());
-  --                     (_ ×, (if {t' = t'} s)) → ns (t' ×, s)}
-  -- next-↦ (if app t₁ t₂ then u else v) with next-↦ (app t₁ t₂)
-  -- ... | yes (t' ×, s) = yes ((if t' then u else v) ×, if s)
-  -- ... | no ns = no λ {(_ ×, here ());
-  --                     (_ ×, (if {t' = t'} s)) → ns (t' ×, s)}
-  -- next-↦ z = no λ {(_ ×, here ())}
-  -- next-↦ (s t) with next-↦ t
-  -- ...             | yes (t' ×, s) = yes ((s t') ×, s s)
-  -- ...             | no ns = no λ {(_ ×, here());
-  --                                 (_ ×, (s s)) → ?}
-  -- next-↦ (rec (var _) _ _)
-  --   = no λ {(_ ×, here ()); (_ ×, rec (here ()))}
-  -- next-↦ (rec (if t₁ then t₂ else t₃) u v)
-  --   with next-↦ (if t₁ then t₂ else t₃)
-  -- ... | yes (t' ×, s) = yes ((rec t' u v) ×, rec s)
-  -- ... | no ns = no λ {(_ ×, here ());
-  --                     (_ ×, (rec {t' = t'} s)) → ns (t' ×, s)}
-  -- next-↦ (rec (nat zero) u _) = yes (u ×, here ℕ-β)
-  -- next-↦ (rec (nat (suc n)) u v)
-  --   = yes (subst v ((~>-refl ×, (nat n)) ×, rec (nat n) u v) ×, here ℕ-β')
-  -- next-↦ (rec (rec t₁ t₂ t₃) u v) with next-↦ (rec t₁ t₂ t₃)
-  -- ... | yes (t' ×, s) = yes ((rec t' u v) ×, rec s)
-  -- ... | no ns = no λ {(_ ×, here ());
-  --                     (_ ×, (rec {t' = t'} s)) → ns (t' ×, s)}
-  -- next-↦ (rec (app t₁ t₂) u v) with next-↦ (app t₁ t₂)
-  -- ... | yes (t' ×, s) = yes ((rec t' u v) ×, rec s)
-  -- ... | no ns = no λ {(_ ×, here ());
-  --                     (_ ×, (rec {t' = t'} s)) → ns (t' ×, s)}
-  -- next-↦ (abs t) = no λ {(_ ×, here ())}
-  -- next-↦ (app (var e) u) = no λ {(_ ×, here ()); (_ ×, ap (here ()))}
-  -- next-↦ (app (if t₁ then t₂ else t₃) u)
-  --   with next-↦ (if t₁ then t₂ else t₃)
-  -- ... | yes (t' ×, s) = yes ((app t' u) ×, ap s)
-  -- ... | no ns = no λ {(_ ×, here ());
-  --                     (_ ×, (ap {t' = t'} s)) → ns (t' ×, s)}
-  -- next-↦ (app (rec t₁ t₂ t₃) u) with next-↦ (rec t₁ t₂ t₃)
-  -- ... | yes (t' ×, s) = yes ((app t' u) ×, ap s)
-  -- ... | no ns = no λ {(_ ×, here ());
-  --                     (_ ×, (ap {t' = t'} s)) → ns (t' ×, s)}
-  -- next-↦ (app (abs t) u) with next-↦ u
-  -- ... | yes (u' ×, s) = yes ((app (abs t) u') ×, ap' s)
-  -- ... | no ns with is-val u
-  -- ...            | yes V = yes (subst t ⟨ u ⟩ ×, here (β V))
-  -- ...            | no nv = no λ {(_ ×, here (β v)) → nv v;
-  --                                (_ ×, ap (here ()));
-  --                                (_ ×, (ap' {u' = u'} s))
-  --                                  → ns (u' ×, s)}
-  -- next-↦ (app (app t₁ t₂) u) with next-↦ (app t₁ t₂)
-  -- ... | yes (t' ×, s) = yes ((app t' u) ×, ap s)
-  -- ... | no ns = no λ {(_ ×, here ());
-  --                     (_ ×, (ap {t' = t'} s)) → ns (t' ×, s)}
 
   nat-val-cant-be-reduced : {t : ℕ ⊣ Γ}
                           → Val t → t ↦ t' → Empty
@@ -423,7 +340,6 @@ module Norm where
   fund-thm ⊥ _ = tt ×, ⊥ ×, false ×, done
   fund-thm (if t then u else v) sn =
     if-sn (fund-thm t sn) (fund-thm u sn) (fund-thm v sn)
-  --fund-thm (nat n) _ = tt ×, nat n ×, nat ×, done
   fund-thm n0 _ = tt ×, n0 ×, nat-z ×, done
   fund-thm (n' t) sn with fund-thm t sn
   ... | _ ×, tv ×, tvv ×, j = tt ×, n' tv ×, nat-s tvv ×, lifts ns j
