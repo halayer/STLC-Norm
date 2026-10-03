@@ -36,8 +36,6 @@ module Norm where
     abs : Val (abs t)
 
   data _↦c_ : A ⊣ Γ → A ⊣ Γ → Set where
-    -- Val u wird benoetigt, um die Bestimmtheit der
-    -- Reduzierungskette zu gewaehrleisten
     β : Val u → app (abs t) u ↦c subst t ⟨ u ⟩
     if-⊤ : (if ⊤ then t else u) ↦c t
     if-⊥ : (if ⊥ then t else u) ↦c u
