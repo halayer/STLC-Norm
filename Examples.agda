@@ -13,13 +13,13 @@ module Examples where
     import Props
     import Data.Unit
 
-  -- Wahrheitswerte
+  -- Truth Values
   and : (𝟚 ⇒ (𝟚 ⇒ 𝟚)) ⊣ Γ
   and = ↑ (abs (abs (if var e0 then var (eS e0) else ⊥)))
   or : (𝟚 ⇒ (𝟚 ⇒ 𝟚)) ⊣ Γ
   or = ↑ (abs (abs (if var e0 then var e0 else var (eS e0))))
 
-  -- Natürliche Zahlen
+  -- Natural Numbers
   add : (ℕ ⇒ (ℕ ⇒ ℕ)) ⊣ Γ
   add = ↑ (abs (abs (rec (var (eS e0)) (var e0) (n' (var e0)))))
 
@@ -28,13 +28,13 @@ module Examples where
     n0
     (app (app add (var (eS (eS e0)))) (var e0)))))
 
-  -- Potentierung ist seeehr langsam
+  -- Exponentiation is very slow
   exp : (ℕ ⇒ (ℕ ⇒ ℕ)) ⊣ Γ
   exp = ↑ (abs (abs (rec (var e0)
     (n' n0)
     (app (app mul (var (eS (eS (eS e0))))) (var e0)))))
 
-  -- Funktionen
+  -- Functions
   fcomp : ((B ⇒ C) ⇒ ((A ⇒ B) ⇒ (A ⇒ C))) ⊣ Γ
   fcomp = ↑ (abs (abs (abs (app (var (eS (eS e0))) (app (var (eS e0)) (var e0))))))
 
